@@ -1,0 +1,7 @@
+project_id = "mjatioiujsduxvhoyqih"
+
+[functions.get-company-users]
+verify_jwt = true
+
+[functions.get-companies-user-counts]
+verify_jwt = true

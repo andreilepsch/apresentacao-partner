@@ -1,0 +1,250 @@
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUserRole } from '@/hooks/useUserRole';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Users, Building2, ArrowLeft, ArrowRight, Settings } from 'lucide-react';
+import DynamicLogo from '@/components/DynamicLogo';
+import { toast } from 'sonner';
+
+interface DashboardStats {
+  totalUsers: number;
+  pendingUsers: number;
+  totalCompanies: number;
+  activePartners: number;
+}
+
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { isAdmin, isLoading } = useUserRole();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    pendingUsers: 0,
+    totalCompanies: 0,
+    activePartners: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    if (!isLoading && !isAdmin) {
+      navigate('/');
+    }
+  }, [isAdmin, isLoading, navigate]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchStats();
+    }
+  }, [isAdmin]);
+
+  const fetchStats = async () => {
+    setLoadingStats(true);
+    try {
+      // Execute all calls in parallel for better performance
+      const [pendingResult, activeResult, companiesResult] = await Promise.all([
+        supabase.functions.invoke('get-pending-users'),
+        supabase.functions.invoke('get-active-users'),
+        supabase.from('companies').select('*', { count: 'exact', head: true })
+      ]);
+
+      // Handle potential errors from edge functions
+      if (pendingResult.error) {
+        console.error('Error fetching pending users:', pendingResult.error);
+      }
+      if (activeResult.error) {
+        console.error('Error fetching active users:', activeResult.error);
+      }
+      if (companiesResult.error) {
+        console.error('Error fetching companies:', companiesResult.error);
+      }
+
+      const pendingUsers = pendingResult.data || [];
+      const activeUsers = activeResult.data || [];
+      const partnersCount = Array.isArray(activeUsers) 
+        ? activeUsers.filter((u: any) => u.role === 'partner').length 
+        : 0;
+
+      setStats({
+        totalUsers: Array.isArray(activeUsers) ? activeUsers.length : 0,
+        pendingUsers: Array.isArray(pendingUsers) ? pendingUsers.length : 0,
+        totalCompanies: companiesResult.count || 0,
+        activePartners: partnersCount,
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      toast.error('Erro ao carregar estatísticas');
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
+  if (isLoading || !isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen" style={{ 
+      background: 'linear-gradient(135deg, #1A3A52 0%, #0F2838 100%)' 
+    }}>
+      {/* Pattern de fundo sutil */}
+      <div className="absolute inset-0 opacity-5 pointer-events-none">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 20% 50%, rgba(201, 164, 92, 0.15) 0%, transparent 50%),
+                            radial-gradient(circle at 80% 80%, rgba(201, 164, 92, 0.1) 0%, transparent 50%),
+                            radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 30%)`
+        }} />
+      </div>
+      
+      <div className="container mx-auto p-8 max-w-7xl relative z-10">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <Button 
+            variant="ghost" 
+            className="text-white border border-white/30 hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm" 
+            onClick={() => navigate('/meeting-selection')}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Voltar para Início
+          </Button>
+          <DynamicLogo className="h-8 w-auto" variant="light" />
+        </div>
+
+        {/* Page Title */}
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-bold text-white mb-3 flex items-center justify-center gap-3">
+            <Settings className="w-10 h-10 text-[#C9A45C]" />
+            Painel Administrativo
+          </h1>
+          <p className="text-white/70 text-lg">
+            Gerencie usuários, empresas e configurações do sistema
+          </p>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#C9A45C] mb-1">
+                  {loadingStats ? '...' : stats.totalUsers}
+                </div>
+                <div className="text-sm text-white/70">Usuários Ativos</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#C9A45C] mb-1">
+                  {loadingStats ? '...' : stats.pendingUsers}
+                </div>
+                <div className="text-sm text-white/70">Pendentes</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#C9A45C] mb-1">
+                  {loadingStats ? '...' : stats.totalCompanies}
+                </div>
+                <div className="text-sm text-white/70">Empresas</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-md border border-white/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-[#C9A45C] mb-1">
+                  {loadingStats ? '...' : stats.activePartners}
+                </div>
+                <div className="text-sm text-white/70">Parceiros</div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main Action Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Gestão de Usuários */}
+          <Card 
+            className="bg-white/10 backdrop-blur-md border border-white/20 hover:border-[#C9A45C] transition-all cursor-pointer group"
+            onClick={() => navigate('/admin/users')}
+          >
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-3 text-white group-hover:text-[#C9A45C] transition-colors">
+                <div className="p-3 bg-[#C9A45C]/20 rounded-lg group-hover:bg-[#C9A45C]/30 transition-colors">
+                  <Users className="w-8 h-8 text-[#C9A45C]" />
+                </div>
+                Gestão de Usuários
+              </CardTitle>
+              <CardDescription className="text-white/70 text-base">
+                Aprove novos usuários, gerencie permissões e edite perfis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Usuários Ativos</span>
+                  <span className="text-white font-semibold">{stats.totalUsers}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Aguardando Aprovação</span>
+                  <span className="text-[#C9A45C] font-semibold">{stats.pendingUsers}</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
+              >
+                Gerenciar Usuários
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Gestão de Empresas */}
+          <Card 
+            className="bg-white/10 backdrop-blur-md border border-white/20 hover:border-[#C9A45C] transition-all cursor-pointer group"
+            onClick={() => navigate('/admin/companies')}
+          >
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-3 text-white group-hover:text-[#C9A45C] transition-colors">
+                <div className="p-3 bg-[#C9A45C]/20 rounded-lg group-hover:bg-[#C9A45C]/30 transition-colors">
+                  <Building2 className="w-8 h-8 text-[#C9A45C]" />
+                </div>
+                Gestão de Empresas
+              </CardTitle>
+              <CardDescription className="text-white/70 text-base">
+                Crie e gerencie empresas, configure branding e vincule usuários
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Total de Empresas</span>
+                  <span className="text-white font-semibold">{stats.totalCompanies}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white/60">Parceiros Ativos</span>
+                  <span className="text-[#C9A45C] font-semibold">{stats.activePartners}</span>
+                </div>
+              </div>
+              <Button 
+                className="w-full bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
+              >
+                Gerenciar Empresas
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;

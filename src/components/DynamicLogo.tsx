@@ -1,0 +1,93 @@
+import React, { useState, useEffect } from 'react';
+import { useBranding } from '@/contexts/BrandingContext';
+import { PageContext } from '@/types/pageContext';
+
+interface DynamicLogoProps {
+  size?: 'sm' | 'md' | 'lg';
+  variant?: 'dark' | 'light' | 'icon-only';
+  className?: string;
+}
+
+const DynamicLogo: React.FC<DynamicLogoProps> = ({ 
+  size = 'md',
+  variant = 'light',
+  className = '' 
+}) => {
+  const { branding, isLoading, pageContext } = useBranding();
+  const [logoSrc, setLogoSrc] = useState<string>('');
+
+  const sizeClasses = {
+    sm: 'h-8 w-auto',
+    md: 'h-12 w-auto',
+    lg: 'h-16 w-auto'
+  };
+
+  // Determinar logo correta baseada no pageContext
+  const getLogoSrc = () => {
+    // AUTHENTICATION/NAVIGATION: SEMPRE usar logo padrão
+    if (pageContext === PageContext.AUTHENTICATION || pageContext === PageContext.NAVIGATION) {
+      console.log('🖼️ DynamicLogo: Using default logo for', pageContext);
+      switch(variant) {
+        case 'dark': return '/lovable-uploads/logo-partner-white-text.png';
+        case 'light': return '/lovable-uploads/logo-partner-black-text.png';
+        case 'icon-only': return '/lovable-uploads/logo-partner-gold.png';
+        default: return '/lovable-uploads/logo-partner-black-text.png';
+      }
+    }
+    
+    // PRESENTATION: Usar logo customizada se disponível
+    if (pageContext === PageContext.PRESENTATION) {
+      // Se ainda está carregando, retornar vazio para evitar flash da logo padrão
+      if (isLoading) {
+        console.log('🖼️ DynamicLogo: Loading presentation branding, returning empty');
+        return '';
+      }
+      
+      // Priorizar logo customizada se existir
+      if (branding.logoUrl) {
+        console.log('🖼️ DynamicLogo: Using custom logo:', branding.logoUrl);
+        return branding.logoUrl;
+      }
+    }
+    
+    // Fallback para logo default baseada na variant
+    console.log('🖼️ DynamicLogo: Using default logo for variant:', variant);
+    switch(variant) {
+      case 'dark': return '/lovable-uploads/logo-partner-white-text.png';
+      case 'light': return '/lovable-uploads/logo-partner-black-text.png';
+      case 'icon-only': return '/lovable-uploads/logo-partner-gold.png';
+      default: return '/lovable-uploads/logo-partner-black-text.png';
+    }
+  };
+
+  // Atualizar logo quando branding, pageContext ou variant mudarem
+  useEffect(() => {
+    const newSrc = getLogoSrc();
+    console.log('🖼️ DynamicLogo: Logo source updated:', {
+      isLoading,
+      pageContext,
+      brandingLogoUrl: branding.logoUrl,
+      variant,
+      finalSrc: newSrc
+    });
+    setLogoSrc(newSrc);
+  }, [branding.logoUrl, isLoading, variant, pageContext]);
+
+  return (
+    <div className={`flex items-center ${className}`}>
+      {logoSrc ? (
+        <img 
+          key={logoSrc}
+          src={logoSrc}
+          alt={branding.companyName}
+          className={`${sizeClasses[size]} object-contain transition-opacity duration-300`}
+          loading="eager"
+        />
+      ) : (
+        <div className={`${sizeClasses[size]} animate-pulse bg-gray-200 rounded`} />
+      )}
+    </div>
+  );
+};
+
+export default DynamicLogo;
