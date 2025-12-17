@@ -45,8 +45,8 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  IF NEW.email NOT LIKE '%@referenciacapital.com.br' THEN
-    RAISE EXCEPTION 'Only @referenciacapital.com.br email addresses are allowed';
+  IF NEW.email NOT LIKE '%@autoridadeinvestimentos.com.br' THEN
+    RAISE EXCEPTION 'Only @autoridadeinvestimentos.com.br email addresses are allowed';
   END IF;
   RETURN NEW;
 END;

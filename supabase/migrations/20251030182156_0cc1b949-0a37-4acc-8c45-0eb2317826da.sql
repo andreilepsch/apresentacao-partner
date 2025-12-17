@@ -17,7 +17,7 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 CREATE TABLE public.user_branding (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-  company_name TEXT NOT NULL DEFAULT 'Referência Capital',
+  company_name TEXT NOT NULL DEFAULT 'Autoridade Investimentos',
   logo_url TEXT,
   primary_color TEXT NOT NULL DEFAULT '#2a3d35',
   secondary_color TEXT NOT NULL DEFAULT '#c9a45c',
@@ -57,7 +57,7 @@ BEGIN
   INSERT INTO public.user_branding (user_id, company_name, logo_url, primary_color, secondary_color, accent_color)
   VALUES (
     NEW.id,
-    'Referência Capital',
+    'Autoridade Investimentos',
     '/lovable-uploads/554a2106-221a-4aeb-b66a-a6e72e8541ec.png',
     '#2a3d35',
     '#c9a45c',

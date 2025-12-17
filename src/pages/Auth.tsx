@@ -254,7 +254,7 @@ const Auth = () => {
         animationDelay: '400ms'
       }}>
           <p className="text-white/60 text-sm font-medium leading-relaxed">
-            Apenas parceiros da Referência Partner podem acessar
+            Apenas parceiros da Autoridade Investimentos podem acessar
           </p>
         </div>
       </div>

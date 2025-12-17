@@ -400,7 +400,7 @@ const renderEcosystem = (pdf: jsPDF, branding: any) => {
   // Empresas do Grupo
   const companies = [
     {
-      name: 'Referência Partner',
+      name: 'Autoridade Investimentos',
       description: 'Consultoria em investimentos imobiliários'
     },
     {

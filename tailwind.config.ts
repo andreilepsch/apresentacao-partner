@@ -53,7 +53,7 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				// Cores específicas da Referência Capital
+				// Cores específicas da Autoridade Investimentos
 				'rc-primary': '#224239',
 				'rc-secondary': '#BA9356', 
 				'rc-accent': '#D4FFE0',

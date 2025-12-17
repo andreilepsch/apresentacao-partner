@@ -5,13 +5,13 @@
 export enum PageContext {
   /**
    * AUTHENTICATION - Páginas de autenticação (login, signup, reset password)
-   * Sempre exibe logo padrão "Referência Partner"
+   * Sempre exibe logo padrão "Autoridade Investimentos"
    */
   AUTHENTICATION = 'AUTHENTICATION',
   
   /**
    * NAVIGATION - Páginas de seleção/navegação (meeting-selection, meeting2-selection)
-   * Sempre exibe logo padrão "Referência Partner"
+   * Sempre exibe logo padrão "Autoridade Investimentos"
    */
   NAVIGATION = 'NAVIGATION',
   

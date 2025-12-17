@@ -51,7 +51,7 @@ interface BrandingContextType {
 }
 
 const defaultBranding: BrandingData = {
-  companyName: 'Referência Partner',
+  companyName: 'Autoridade Investimentos',
   logoUrl: null,
   primaryColor: '#1A4764',
   secondaryColor: '#c9a45c',

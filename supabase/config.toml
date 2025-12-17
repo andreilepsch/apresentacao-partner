@@ -1,4 +1,4 @@
-project_id = "mjatioiujsduxvhoyqih"
+project_id = "apresentacao-partner"
 
 [functions.get-company-users]
 verify_jwt = true

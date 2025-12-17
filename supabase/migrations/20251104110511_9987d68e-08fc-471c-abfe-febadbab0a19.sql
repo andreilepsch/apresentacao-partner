@@ -94,7 +94,7 @@ $$;
 
 COMMENT ON FUNCTION public.set_user_company IS 'Função para admins vincularem usuário a uma empresa';
 
--- Criar empresa "Referência Partner" (empresa padrão)
+-- Criar empresa "Autoridade Investimentos" (empresa padrão)
 INSERT INTO public.companies (
   id,
   company_name,
@@ -107,7 +107,7 @@ INSERT INTO public.companies (
   pdf_accent_color
 ) VALUES (
   '00000000-0000-0000-0000-000000000001',
-  'Referência Partner',
+  'Autoridade Investimentos',
   '/lovable-uploads/logo-partner-white-text.png',
   '#1A4764',
   '#c9a45c',

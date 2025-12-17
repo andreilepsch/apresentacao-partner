@@ -36,7 +36,7 @@ const Ferramentas = () => {
     description: 'Ferramenta avançada de busca e filtros para encontrar rapidamente imóveis que atendem aos critérios específicos dos clientes.',
     icon: Search,
     status: 'available',
-    route: 'https://finder.referenciacapital.com.br',
+    route: 'https://finder.autoridadeinvestimentos.com.br',
     gradient: 'from-accent/10 to-accent/5',
     external: true
   }];
@@ -142,7 +142,7 @@ const Ferramentas = () => {
           <h2 className="text-heading-2 font-bold mb-4 text-white">
             Fique por dentro das novidades
           </h2>
-          <p className="text-heading-4 text-white/70 mb-8 max-w-2xl mx-auto">Novas ferramentas são constantemente desenvolvidas para atender às necessidades dos parceiros da Referência Partner</p>
+          <p className="text-heading-4 text-white/70 mb-8 max-w-2xl mx-auto">Novas ferramentas são constantemente desenvolvidas para atender às necessidades dos parceiros da Autoridade Investimentos</p>
         </div>
       </div>
     </div>;

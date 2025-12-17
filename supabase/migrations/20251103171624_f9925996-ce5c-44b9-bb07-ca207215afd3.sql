@@ -1,4 +1,4 @@
--- Atualizar logo antiga para nova logo Referência Partner
+-- Atualizar logo antiga para nova logo Autoridade Investimentos
 UPDATE user_branding 
 SET 
   logo_url = '/lovable-uploads/logo-partner-white-text.png',

@@ -9,7 +9,7 @@ const DynamicCompanyName: React.FC<DynamicCompanyNameProps> = ({ className = '' 
   const { branding } = useBranding();
 
   return (
-    <span className={className}>{branding.companyName || 'Referência Partner'}</span>
+    <span className={className}>{branding.companyName || 'Autoridade Investimentos'}</span>
   );
 };
 

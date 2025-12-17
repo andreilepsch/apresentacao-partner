@@ -40,7 +40,7 @@ BEGIN
   INSERT INTO public.user_branding (user_id, company_name, logo_url, primary_color, secondary_color, accent_color)
   VALUES (
     NEW.id,
-    'Referência Capital',
+    'Autoridade Investimentos',
     '/lovable-uploads/554a2106-221a-4aeb-b66a-a6e72e8541ec.png',
     '#2a3d35',
     '#c9a45c',

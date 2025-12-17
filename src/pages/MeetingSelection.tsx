@@ -70,7 +70,7 @@ const MeetingSelection = () => {
                 </div>
                 <CardTitle className="text-xl font-bold text-white mb-3">1ª Reunião</CardTitle>
                 <CardDescription className="text-white/70 text-base">
-                  Apresentação principal da Referência Partner
+                  Apresentação principal da Autoridade Investimentos
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-auto p-8 pt-4 relative z-40">

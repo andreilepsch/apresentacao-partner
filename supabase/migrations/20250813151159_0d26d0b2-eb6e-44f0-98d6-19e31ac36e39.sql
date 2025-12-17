@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.validate_email_domain()
 AS $function$
 BEGIN
   -- Lista dos domínios permitidos do Grupo Referência
-  IF NEW.email NOT LIKE '%@referenciacapital.com.br' 
+  IF NEW.email NOT LIKE '%@autoridadeinvestimentos.com.br' 
      AND NEW.email NOT LIKE '%@bankreferencia.com'
      AND NEW.email NOT LIKE '%@gruporeferencia.com'
      AND NEW.email NOT LIKE '%@referenciacapital.me'
