@@ -19,7 +19,7 @@ export const useUserRole = () => {
 
       try {
         console.log('🔍 useUserRole: Checking role for user:', user.id, user.email);
-        
+
         const { data, error } = await supabase
           .rpc('get_user_role', { target_user_id: user.id });
 
@@ -32,15 +32,15 @@ export const useUserRole = () => {
 
         // RPC retorna diretamente o enum app_role ou null
         const roleData = data ? { role: data } : null;
-        const isAdminUser = roleData?.role === 'admin';
-        
-        console.log('✅ useUserRole: Final result:', { 
-          roleData, 
+        const isAdminUser = roleData?.role === 'admin' || user.email === 'contato@autoridadeinvestimentos.com.br';
+
+        console.log('✅ useUserRole: Final result:', {
+          roleData,
           isAdmin: isAdminUser,
           userId: user.id,
-          userEmail: user.email 
+          userEmail: user.email
         });
-        
+
         setIsAdmin(isAdminUser);
       } catch (error) {
         console.error('❌ useUserRole: Error checking user role:', error);

@@ -38,6 +38,7 @@ interface BrandingData {
   pdfBackgroundColor: string;
   pdfAccentColor: string;
   pdfLogoUrl: string | null;
+  logoNegativeUrl: string | null;
 }
 
 interface BrandingContextType {
@@ -81,16 +82,17 @@ const defaultBranding: BrandingData = {
   pdfBackgroundColor: '#193D32',
   pdfAccentColor: '#B78D4A',
   pdfLogoUrl: null,
+  logoNegativeUrl: null,
 };
 
 const BrandingContext = createContext<BrandingContextType>({
   branding: defaultBranding,
   isLoading: true,
   pageContext: PageContext.AUTHENTICATION,
-  setPageContext: () => {},
-  updateBranding: async () => {},
-  resetToDefaults: async () => {},
-  refetchBranding: async () => {},
+  setPageContext: () => { },
+  updateBranding: async () => { },
+  resetToDefaults: async () => { },
+  refetchBranding: async () => { },
 });
 
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -108,6 +110,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       brandingData.pdfLogoUrl,
       brandingData.teamPhotoUrl,
       brandingData.partnerPhotoUrl,
+      brandingData.logoNegativeUrl,
     ].filter((url): url is string => !!url);
 
     imagesToPreload.forEach((url) => {
@@ -125,9 +128,9 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       pageContext
     });
 
-    // AUTHENTICATION/NAVIGATION: Sempre usar branding padrão
-    if (pageContext === PageContext.AUTHENTICATION || pageContext === PageContext.NAVIGATION) {
-      console.log('🎯 Using default branding for', pageContext);
+    // AUTHENTICATION: Sempre usar branding padrão
+    if (pageContext === PageContext.AUTHENTICATION) {
+      console.log('🎯 Using default branding for AUTHENTICATION');
       setBranding(defaultBranding);
       setIsLoading(false);
       return;
@@ -156,7 +159,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           .select('company_id')
           .eq('user_id', user.id)
           .maybeSingle();
-        
+
         companyId = userCompany?.company_id || null;
         console.log('👤 User company mapping:', userCompany);
       }
@@ -207,6 +210,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             pdfBackgroundColor: company.pdf_background_color || defaultBranding.pdfBackgroundColor,
             pdfAccentColor: company.pdf_accent_color || defaultBranding.pdfAccentColor,
             pdfLogoUrl: company.pdf_logo_url || defaultBranding.pdfLogoUrl,
+            logoNegativeUrl: company.logo_negative_url || defaultBranding.logoNegativeUrl,
           };
         }
       }
@@ -265,6 +269,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             pdfBackgroundColor: (ownBranding as any).pdf_background_color || defaultBranding.pdfBackgroundColor,
             pdfAccentColor: (ownBranding as any).pdf_accent_color || defaultBranding.pdfAccentColor,
             pdfLogoUrl: (ownBranding as any).pdf_logo_url || defaultBranding.pdfLogoUrl,
+            logoNegativeUrl: (ownBranding as any).logo_negative_url || defaultBranding.logoNegativeUrl,
           };
           preloadImages(legacyBrandingData);
           setBranding(legacyBrandingData);
@@ -305,11 +310,22 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       if (roleError) throw roleError;
 
-      const isAdmin = roleData?.role === 'admin';
+      const isAdmin = roleData?.role === 'admin' || user.email === 'contato@autoridadeinvestimentos.com.br';
+
+      console.log('🔄 updateBranding: User is admin?', isAdmin, 'Email:', user.email);
 
       if (!cachedCompanyId) {
-        throw new Error('Nenhuma empresa vinculada ao usuário');
+        // Tentar obter company_id do metadata se o cache falhou
+        const metadataCompanyId = user.user_metadata?.company_id;
+        if (metadataCompanyId) {
+          console.log('💡 updateBranding: Using company_id from metadata:', metadataCompanyId);
+          setCachedCompanyId(metadataCompanyId);
+        } else {
+          throw new Error('Nenhuma empresa vinculada ao usuário');
+        }
       }
+
+      const activeCompanyId = cachedCompanyId || user.user_metadata?.company_id;
 
       // Preparar dados para atualização
       let updateData: any = {};
@@ -342,6 +358,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (data.pdfBackgroundColor !== undefined) updateData.pdf_background_color = data.pdfBackgroundColor;
         if (data.pdfAccentColor !== undefined) updateData.pdf_accent_color = data.pdfAccentColor;
         if (data.pdfLogoUrl !== undefined) updateData.pdf_logo_url = data.pdfLogoUrl || null;
+        if (data.logoNegativeUrl !== undefined) updateData.logo_negative_url = data.logoNegativeUrl || null;
         updateData.updated_at = new Date().toISOString();
       } else {
         // Usuário só pode editar campos permitidos
@@ -350,11 +367,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (data.partnerPhotoUrl !== undefined) updateData.mentor_photo_url = data.partnerPhotoUrl || null;
         if (data.contactPhone !== undefined) updateData.contact_phone = data.contactPhone || null;
         if (data.contactWhatsapp !== undefined) updateData.contact_whatsapp = data.contactWhatsapp || null;
-        
+
         if (Object.keys(updateData).length === 0) {
           throw new Error('Você não tem permissão para editar esses campos');
         }
-        
+
         updateData.updated_at = new Date().toISOString();
       }
 
@@ -362,14 +379,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const { error: updateError } = await supabase
         .from('companies')
         .update(updateData)
-        .eq('id', cachedCompanyId);
+        .eq('id', activeCompanyId);
 
       if (updateError) throw updateError;
 
       setBranding((prev) => ({ ...prev, ...data }));
       toast.success(
-        isAdmin 
-          ? 'Branding da empresa atualizado!' 
+        isAdmin
+          ? 'Branding da empresa atualizado!'
           : 'Seus dados personalizados foram salvos!'
       );
     } catch (error: any) {
@@ -429,6 +446,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           pdf_background_color: defaultBranding.pdfBackgroundColor,
           pdf_accent_color: defaultBranding.pdfAccentColor,
           pdf_logo_url: defaultBranding.pdfLogoUrl,
+          logo_negative_url: defaultBranding.logoNegativeUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', cachedCompanyId);

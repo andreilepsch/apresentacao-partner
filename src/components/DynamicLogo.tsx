@@ -8,10 +8,10 @@ interface DynamicLogoProps {
   className?: string;
 }
 
-const DynamicLogo: React.FC<DynamicLogoProps> = ({ 
+const DynamicLogo: React.FC<DynamicLogoProps> = ({
   size = 'md',
   variant = 'light',
-  className = '' 
+  className = ''
 }) => {
   const { branding, isLoading, pageContext } = useBranding();
   const [logoSrc, setLogoSrc] = useState<string>('');
@@ -24,35 +24,23 @@ const DynamicLogo: React.FC<DynamicLogoProps> = ({
 
   // Determinar logo correta baseada no pageContext
   const getLogoSrc = () => {
-    // AUTHENTICATION/NAVIGATION: SEMPRE usar logo padrão
-    if (pageContext === PageContext.AUTHENTICATION || pageContext === PageContext.NAVIGATION) {
-      console.log('🖼️ DynamicLogo: Using default logo for', pageContext);
-      switch(variant) {
-        case 'dark': return '/lovable-uploads/logo-partner-white-text.png';
-        case 'light': return '/lovable-uploads/logo-partner-black-text.png';
-        case 'icon-only': return '/lovable-uploads/logo-partner-gold.png';
-        default: return '/lovable-uploads/logo-partner-black-text.png';
-      }
+    // Se estiver carregando branding de apresentação, esperar para evitar flash
+    if (isLoading && pageContext === PageContext.PRESENTATION) {
+      return '';
     }
-    
-    // PRESENTATION: Usar logo customizada se disponível
-    if (pageContext === PageContext.PRESENTATION) {
-      // Se ainda está carregando, retornar vazio para evitar flash da logo padrão
-      if (isLoading) {
-        console.log('🖼️ DynamicLogo: Loading presentation branding, returning empty');
-        return '';
-      }
-      
-      // Priorizar logo customizada se existir
-      if (branding.logoUrl) {
-        console.log('🖼️ DynamicLogo: Using custom logo:', branding.logoUrl);
-        return branding.logoUrl;
-      }
+
+    // 1. Prioridade Máxima: Logo Negativa Customizada (para variantes dark)
+    if (variant === 'dark' && branding.logoNegativeUrl) {
+      return branding.logoNegativeUrl;
     }
-    
-    // Fallback para logo default baseada na variant
-    console.log('🖼️ DynamicLogo: Using default logo for variant:', variant);
-    switch(variant) {
+
+    // 2. Prioridade: Logo Principal Customizada (exceto em AUTHENTICATION)
+    if (pageContext !== PageContext.AUTHENTICATION && branding.logoUrl) {
+      return branding.logoUrl;
+    }
+
+    // 3. Fallback: Logos Padrão do Sistema
+    switch (variant) {
       case 'dark': return '/lovable-uploads/logo-partner-white-text.png';
       case 'light': return '/lovable-uploads/logo-partner-black-text.png';
       case 'icon-only': return '/lovable-uploads/logo-partner-gold.png';
@@ -67,16 +55,17 @@ const DynamicLogo: React.FC<DynamicLogoProps> = ({
       isLoading,
       pageContext,
       brandingLogoUrl: branding.logoUrl,
+      brandingLogoNegativeUrl: branding.logoNegativeUrl,
       variant,
       finalSrc: newSrc
     });
     setLogoSrc(newSrc);
-  }, [branding.logoUrl, isLoading, variant, pageContext]);
+  }, [branding.logoUrl, branding.logoNegativeUrl, isLoading, variant, pageContext]);
 
   return (
     <div className={`flex items-center ${className}`}>
       {logoSrc ? (
-        <img 
+        <img
           key={logoSrc}
           src={logoSrc}
           alt={branding.companyName}
