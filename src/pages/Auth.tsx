@@ -109,20 +109,20 @@ const Auth = () => {
           <div className="max-w-xl">
             {/* NOVO: Título Partner e Subtítulo movidos para cá */}
             <div className="mb-12">
-              <h1 className="text-7xl md:text-8xl font-black bg-gradient-to-r from-[#C9A45C] via-[#F5D285] to-[#C9A45C] bg-clip-text text-transparent mb-2 tracking-tighter uppercase italic drop-shadow-2xl">
+              <h1 className="text-5xl md:text-6xl font-black bg-gradient-to-r from-[#C9A45C] via-[#F5D285] to-[#C9A45C] bg-clip-text text-transparent mb-2 tracking-tighter uppercase italic drop-shadow-2xl">
                 Partner
               </h1>
-              <p className="text-xl md:text-2xl text-white/90 font-bold tracking-[0.2em] uppercase drop-shadow-md">
+              <p className="text-lg md:text-xl text-white/90 font-bold tracking-[0.2em] uppercase drop-shadow-md">
                 Sistema de Apresentações
               </p>
             </div>
 
             <div className="w-24 h-1.5 bg-[#C9A45C] mb-8" />
 
-            <h2 className="text-4xl xl:text-6xl font-bold text-white mb-6 leading-[1.1] tracking-tight drop-shadow-lg">
+            <h2 className="text-2xl xl:text-4xl font-bold text-white mb-6 leading-[1.1] tracking-tight drop-shadow-lg">
               Ferramentas de elite para parceiros de <span className="text-[#C9A45C] italic">alta performance</span>.
             </h2>
-            <p className="text-white/80 text-lg xl:text-xl leading-relaxed font-light drop-shadow-md">
+            <p className="text-white/80 text-sm xl:text-base leading-relaxed font-light drop-shadow-md">
               Sua jornada para o domínio do mercado de investimentos começa com a melhor apresentação.
             </p>
           </div>
@@ -170,7 +170,7 @@ const Auth = () => {
                           <Label htmlFor="reset-email" className="text-white font-medium text-sm">
                             Email
                           </Label>
-                          <Input id="reset-email" type="email" placeholder="seu.email@gruporeferencia.com" value={resetEmail} onChange={e => setResetEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
+                          <Input id="reset-email" type="email" placeholder="Digite o e-mail da sua empresa" value={resetEmail} onChange={e => setResetEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
                         </div>
 
                         {error && (
@@ -211,7 +211,7 @@ const Auth = () => {
                           <Label htmlFor="login-email" className="text-white font-medium text-sm">
                             Email
                           </Label>
-                          <Input id="login-email" type="email" placeholder="seu.email@gruporeferencia.com" value={email} onChange={e => setEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
+                          <Input id="login-email" type="email" placeholder="Digite o e-mail da sua empresa" value={email} onChange={e => setEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
                         </div>
                         <div className="space-y-3">
                           <Label htmlFor="login-password" className="text-white font-medium text-sm">
@@ -253,7 +253,7 @@ const Auth = () => {
                           <Label htmlFor="signup-email" className="text-white font-medium text-sm">
                             Email Corporativo
                           </Label>
-                          <Input id="signup-email" type="email" placeholder="seu.email@gruporeferencia.com" value={email} onChange={e => setEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
+                          <Input id="signup-email" type="email" placeholder="Digite o e-mail da sua empresa" value={email} onChange={e => setEmail(e.target.value)} required className="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-[#F5D285] focus:bg-white/20 transition-all duration-200 h-12" />
                         </div>
                         <div className="space-y-3">
                           <Label htmlFor="signup-password" className="text-white font-medium text-sm">

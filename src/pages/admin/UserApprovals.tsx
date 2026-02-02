@@ -74,6 +74,9 @@ const UserApprovals = () => {
   const [selectedUserToToggle, setSelectedUserToToggle] = useState<ActiveUser | null>(null);
   const [showToggleUserDialog, setShowToggleUserDialog] = useState(false);
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: string, email: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (!roleLoading && !isAdmin) {
@@ -85,7 +88,7 @@ const UserApprovals = () => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         throw new Error('No active session');
       }
@@ -120,7 +123,7 @@ const UserApprovals = () => {
     setLoadingActive(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         throw new Error('No active session');
       }
@@ -208,7 +211,7 @@ const UserApprovals = () => {
       if (error) throw error;
 
       const roleLabel = selectedRole === 'admin' ? 'Admin' : 'Parceiro';
-      
+
       toast({
         title: 'Usuário aprovado!',
         description: `O usuário foi aprovado como ${roleLabel}.`,
@@ -262,13 +265,46 @@ const UserApprovals = () => {
     }
   };
 
+
+  const handleDeleteUser = async () => {
+    if (!userToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase.rpc('delete_user_completely', {
+        _user_id: userToDelete.id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Usuário excluído',
+        description: 'O registro do usuário foi removido do sistema.',
+      });
+
+      fetchPendingUsers();
+      fetchActiveUsers();
+      setShowDeleteDialog(false);
+      setUserToDelete(null);
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      toast({
+        title: 'Erro ao excluir usuário',
+        description: 'Não foi possível excluir o usuário. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (roleLoading || !isAdmin) {
     return null;
   }
 
   return (
-    <div className="min-h-screen" style={{ 
-      background: 'linear-gradient(135deg, #1A3A52 0%, #0F2838 100%)' 
+    <div className="min-h-screen" style={{
+      background: 'linear-gradient(135deg, #1A3A52 0%, #0F2838 100%)'
     }}>
       {/* Pattern de fundo sutil */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
@@ -278,7 +314,7 @@ const UserApprovals = () => {
                             radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 30%)`
         }} />
       </div>
-      
+
       <div className="container mx-auto p-8 max-w-6xl relative z-10">
         <div className="flex items-center justify-between mb-8">
           <Button variant="ghost" className="text-white border border-white/30 hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm" onClick={() => navigate('/admin')}>
@@ -383,6 +419,18 @@ const UserApprovals = () => {
                             <XCircle className="w-4 h-4 mr-1" />
                             Rejeitar
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setUserToDelete({ id: user.user_id, email: user.email || '' });
+                              setShowDeleteDialog(true);
+                            }}
+                            className="bg-black hover:bg-red-900"
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Excluir
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -442,12 +490,12 @@ const UserApprovals = () => {
                 </p>
               </div>
             ) : (() => {
-              const filteredUsers = filterActiveStatus === 'all' 
-                ? activeUsers 
+              const filteredUsers = filterActiveStatus === 'all'
+                ? activeUsers
                 : filterActiveStatus === 'active'
                   ? activeUsers.filter(u => u.is_active)
                   : activeUsers.filter(u => !u.is_active);
-              
+
               return filteredUsers.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-lg font-medium text-white">Nenhum usuário encontrado</p>
@@ -456,105 +504,116 @@ const UserApprovals = () => {
                   </p>
                 </div>
               ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10 hover:bg-white/5">
-                    <TableHead className="text-white/90">Nome</TableHead>
-                    <TableHead className="text-white/90">Email</TableHead>
-                    <TableHead className="text-white/90">Role</TableHead>
-                    <TableHead className="text-white/90">Status</TableHead>
-                    <TableHead className="text-white/90">Empresa</TableHead>
-                    <TableHead className="text-white/90">Data de Aprovação</TableHead>
-                    <TableHead className="text-right text-white/90">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id} className="border-white/10 hover:bg-white/5">
-                      <TableCell className="font-medium text-white">
-                        {user.full_name}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2 text-white/80">
-                          <Mail className="w-4 h-4 text-[#C9A45C]" />
-                          {user.email}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            user.role === 'admin' ? 'destructive' : 
-                            user.role === 'partner' ? 'default' : 
-                            'secondary'
-                          }
-                        >
-                          {user.role === 'admin' ? 'Admin' : 
-                           user.role === 'partner' ? 'Parceiro' : 
-                           'Usuário'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_active ? 'default' : 'secondary'} className={user.is_active ? 'bg-green-600' : 'bg-gray-500'}>
-                          {user.is_active ? 'Ativo' : 'Inativo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-white/80">{user.company_name}</TableCell>
-                      <TableCell>
-                        <div className="text-sm text-white/70">
-                          {new Date(user.approved_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/admin/users/edit/${user.user_id}`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant={user.is_active ? 'outline' : 'default'}
-                            onClick={async () => {
-                              setTogglingUserId(user.user_id);
-                              try {
-                                const { data: { session } } = await supabase.auth.getSession();
-                                await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/toggle-user-status`, {
-                                  method: 'POST',
-                                  headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ userId: user.user_id, isActive: !user.is_active })
-                                });
-                                toast({ title: user.is_active ? 'Usuário inativado' : 'Usuário reativado' });
-                                fetchActiveUsers();
-                              } catch (error) {
-                                toast({ title: 'Erro', variant: 'destructive' });
-                              } finally {
-                                setTogglingUserId(null);
-                              }
-                            }}
-                            disabled={togglingUserId === user.user_id}
-                          >
-                            {togglingUserId === user.user_id ? <Loader2 className="w-4 h-4 animate-spin" /> : user.is_active ? <UserX className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                          </Button>
-                        </div>
-                      </TableCell>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-white/10 hover:bg-white/5">
+                      <TableHead className="text-white/90">Nome</TableHead>
+                      <TableHead className="text-white/90">Email</TableHead>
+                      <TableHead className="text-white/90">Role</TableHead>
+                      <TableHead className="text-white/90">Status</TableHead>
+                      <TableHead className="text-white/90">Empresa</TableHead>
+                      <TableHead className="text-white/90">Data de Aprovação</TableHead>
+                      <TableHead className="text-right text-white/90">Ações</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredUsers.map((user) => (
+                      <TableRow key={user.id} className="border-white/10 hover:bg-white/5">
+                        <TableCell className="font-medium text-white">
+                          {user.full_name}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2 text-white/80">
+                            <Mail className="w-4 h-4 text-[#C9A45C]" />
+                            {user.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.role === 'admin' ? 'destructive' :
+                                user.role === 'partner' ? 'default' :
+                                  'secondary'
+                            }
+                          >
+                            {user.role === 'admin' ? 'Admin' :
+                              user.role === 'partner' ? 'Parceiro' :
+                                'Usuário'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.is_active ? 'default' : 'secondary'} className={user.is_active ? 'bg-green-600' : 'bg-gray-500'}>
+                            {user.is_active ? 'Ativo' : 'Inativo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-white/80">{user.company_name}</TableCell>
+                        <TableCell>
+                          <div className="text-sm text-white/70">
+                            {new Date(user.approved_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric'
+                            })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/admin/users/edit/${user.user_id}`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={user.is_active ? 'outline' : 'default'}
+                              onClick={async () => {
+                                setTogglingUserId(user.user_id);
+                                try {
+                                  const { data: { session } } = await supabase.auth.getSession();
+                                  await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/toggle-user-status`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${session?.access_token}`, 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: user.user_id, isActive: !user.is_active })
+                                  });
+                                  toast({ title: user.is_active ? 'Usuário inativado' : 'Usuário reativado' });
+                                  fetchActiveUsers();
+                                } catch (error) {
+                                  toast({ title: 'Erro', variant: 'destructive' });
+                                } finally {
+                                  setTogglingUserId(null);
+                                }
+                              }}
+                              disabled={togglingUserId === user.user_id}
+                            >
+                              {togglingUserId === user.user_id ? <Loader2 className="w-4 h-4 animate-spin" /> : user.is_active ? <UserX className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setUserToDelete({ id: user.user_id, email: user.email });
+                                setShowDeleteDialog(true);
+                              }}
+                              className="bg-black hover:bg-red-900"
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               );
             })()}
           </CardContent>
         </Card>
-      </div>
+      </div >
 
       {/* Dialog de Aprovação */}
-      <AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog}>
+      < AlertDialog open={showApproveDialog} onOpenChange={setShowApproveDialog} >
         <AlertDialogContent className="bg-[#1A3A52] border border-white/20">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Aprovar acesso do usuário</AlertDialogTitle>
@@ -598,8 +657,8 @@ const UserApprovals = () => {
             }} className="text-white border-white/20">
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleApprove} 
+            <AlertDialogAction
+              onClick={handleApprove}
               disabled={!selectedCompany || isApproving}
               className="bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
             >
@@ -617,10 +676,10 @@ const UserApprovals = () => {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
+      </AlertDialog >
 
       {/* Dialog de Rejeição */}
-      <AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog}>
+      < AlertDialog open={showRejectDialog} onOpenChange={setShowRejectDialog} >
         <AlertDialogContent className="bg-[#1A3A52] border border-white/20">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Rejeitar solicitação de acesso</AlertDialogTitle>
@@ -653,8 +712,46 @@ const UserApprovals = () => {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
-      </AlertDialog>
-    </div>
+      </AlertDialog >
+
+      {/* Dialog de Exclusão */}
+      < AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog} >
+        <AlertDialogContent className="bg-[#1A3A52] border border-white/20">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Excluir usuário permanentemente?</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/80">
+              Tem certeza que deseja excluir os dados de <strong className="text-[#C9A45C]">{userToDelete?.email}</strong>?
+              Esta ação removerá o perfil, permissões e status do usuário. O usuário não conseguirá mais acessar o sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowDeleteDialog(false);
+              setUserToDelete(null);
+            }} className="text-white border-white/20">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              disabled={isDeleting}
+              className="bg-red-600 text-white hover:bg-red-700"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Confirmar Exclusão
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog >
+    </div >
   );
 };
 

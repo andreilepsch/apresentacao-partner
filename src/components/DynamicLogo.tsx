@@ -24,8 +24,8 @@ const DynamicLogo: React.FC<DynamicLogoProps> = ({
 
   // Determinar logo correta baseada no pageContext
   const getLogoSrc = () => {
-    // Se estiver carregando branding de apresentação, esperar para evitar flash
-    if (isLoading && pageContext === PageContext.PRESENTATION) {
+    // Se estiver carregando e não for tela de login, esperar para evitar flash da logo padrão
+    if (isLoading && pageContext !== PageContext.AUTHENTICATION) {
       return '';
     }
 

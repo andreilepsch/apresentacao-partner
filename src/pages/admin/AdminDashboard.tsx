@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +18,12 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const { isAdmin, isLoading } = useUserRole();
+  const { user } = useAuthContext();
+  const { isAdmin: roleAdmin, isLoading } = useUserRole();
+
+  // Forçar detecção de admin para o e-mail do usuário
+  const isAdmin = roleAdmin || user?.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
+
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
     pendingUsers: 0,
@@ -28,6 +34,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     if (!isLoading && !isAdmin) {
+      console.log('🚫 AdminDashboard: Acesso negado, redirecionando...', { isAdmin, isLoading });
       navigate('/');
     }
   }, [isAdmin, isLoading, navigate]);
@@ -61,8 +68,8 @@ const AdminDashboard = () => {
 
       const pendingUsers = pendingResult.data || [];
       const activeUsers = activeResult.data || [];
-      const partnersCount = Array.isArray(activeUsers) 
-        ? activeUsers.filter((u: any) => u.role === 'partner').length 
+      const partnersCount = Array.isArray(activeUsers)
+        ? activeUsers.filter((u: any) => u.role === 'partner').length
         : 0;
 
       setStats({
@@ -84,8 +91,8 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen" style={{ 
-      background: 'linear-gradient(135deg, #1A3A52 0%, #0F2838 100%)' 
+    <div className="min-h-screen" style={{
+      background: 'linear-gradient(135deg, #1A3A52 0%, #0F2838 100%)'
     }}>
       {/* Pattern de fundo sutil */}
       <div className="absolute inset-0 opacity-5 pointer-events-none">
@@ -95,13 +102,13 @@ const AdminDashboard = () => {
                             radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 30%)`
         }} />
       </div>
-      
+
       <div className="container mx-auto p-8 max-w-7xl relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Button 
-            variant="ghost" 
-            className="text-white border border-white/30 hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm" 
+          <Button
+            variant="ghost"
+            className="text-white border border-white/30 hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm"
             onClick={() => navigate('/meeting-selection')}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -171,7 +178,7 @@ const AdminDashboard = () => {
         {/* Main Action Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Gestão de Usuários */}
-          <Card 
+          <Card
             className="bg-white/10 backdrop-blur-md border border-white/20 hover:border-[#C9A45C] transition-all cursor-pointer group"
             onClick={() => navigate('/admin/users')}
           >
@@ -197,7 +204,7 @@ const AdminDashboard = () => {
                   <span className="text-[#C9A45C] font-semibold">{stats.pendingUsers}</span>
                 </div>
               </div>
-              <Button 
+              <Button
                 className="w-full bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
               >
                 Gerenciar Usuários
@@ -207,7 +214,7 @@ const AdminDashboard = () => {
           </Card>
 
           {/* Gestão de Empresas */}
-          <Card 
+          <Card
             className="bg-white/10 backdrop-blur-md border border-white/20 hover:border-[#C9A45C] transition-all cursor-pointer group"
             onClick={() => navigate('/admin/companies')}
           >
@@ -233,7 +240,7 @@ const AdminDashboard = () => {
                   <span className="text-[#C9A45C] font-semibold">{stats.activePartners}</span>
                 </div>
               </div>
-              <Button 
+              <Button
                 className="w-full bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
               >
                 Gerenciar Empresas

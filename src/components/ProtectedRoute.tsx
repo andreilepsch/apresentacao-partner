@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { useAccountStatus } from '@/hooks/useAccountStatus';
 import DynamicCompanyName from '@/components/DynamicCompanyName';
 
@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuthContext();
   const { status, isActive, loading: statusLoading } = useAccountStatus();
   const navigate = useNavigate();
 
@@ -21,6 +21,10 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   useEffect(() => {
     if (!statusLoading && user) {
+      const isAdmin = user.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
+
+      if (isAdmin) return; // Bypassa verificações de status para o admin principal
+
       if (status === 'pending') {
         navigate('/pending-approval');
       } else if (status === 'rejected') {

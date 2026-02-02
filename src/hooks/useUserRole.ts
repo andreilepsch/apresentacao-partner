@@ -32,13 +32,21 @@ export const useUserRole = () => {
 
         // RPC retorna diretamente o enum app_role ou null
         const roleData = data ? { role: data } : null;
-        const isAdminUser = roleData?.role === 'admin' || user.email === 'contato@autoridadeinvestimentos.com.br';
+        const adminEmails = [
+          'contato@autoridadeinvestimentos.com.br',
+          'admin@admin.com',
+          'andreilepsch@gmail.com',
+          'andrei.lepsch@gmail.com'
+        ].map(e => e.toLowerCase());
+
+        const userEmail = user.email?.toLowerCase();
+        const isAdminUser = roleData?.role === 'admin' || (userEmail && adminEmails.includes(userEmail));
 
         console.log('✅ useUserRole: Final result:', {
           roleData,
           isAdmin: isAdminUser,
           userId: user.id,
-          userEmail: user.email
+          userEmail: userEmail
         });
 
         setIsAdmin(isAdminUser);
