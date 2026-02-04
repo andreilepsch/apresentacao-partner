@@ -15,7 +15,7 @@ export const useAuth = () => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
-        
+
         // Clear app data when user signs out or becomes unauthenticated
         if (!session) {
           clearAppData();
@@ -33,23 +33,24 @@ export const useAuth = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, fullName: string, companyName: string) => {
     // Domain validation is handled server-side via database trigger
     // This ensures consistency and prevents bypass
 
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          full_name: fullName
+          full_name: fullName,
+          company_name: companyName
         }
       }
     });
-    
+
     return { error };
   };
 
@@ -58,7 +59,7 @@ export const useAuth = () => {
       email,
       password
     });
-    
+
     return { error };
   };
 
@@ -72,11 +73,11 @@ export const useAuth = () => {
   const resetPassword = async (email: string) => {
     // Use a more robust redirect URL that includes the protocol and full path
     const redirectUrl = `${window.location.protocol}//${window.location.host}/reset-password`;
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl
     });
-    
+
     return { error };
   };
 

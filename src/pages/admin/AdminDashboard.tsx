@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { useBranding } from '@/contexts/BrandingContext';
+import { PageContext } from '@/types/pageContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +22,7 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { isAdmin: roleAdmin, isLoading } = useUserRole();
+  const { setPageContext, refetchBranding } = useBranding();
 
   // Forçar detecção de admin para o e-mail do usuário
   const isAdmin = roleAdmin || user?.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
@@ -40,6 +43,11 @@ const AdminDashboard = () => {
   }, [isAdmin, isLoading, navigate]);
 
   useEffect(() => {
+    setPageContext(PageContext.NAVIGATION);
+    refetchBranding(PageContext.NAVIGATION);
+  }, [setPageContext, refetchBranding]);
+
+  useEffect(() => {
     if (isAdmin) {
       fetchStats();
     }
@@ -48,35 +56,38 @@ const AdminDashboard = () => {
   const fetchStats = async () => {
     setLoadingStats(true);
     try {
-      // Execute all calls in parallel for better performance
-      const [pendingResult, activeResult, companiesResult] = await Promise.all([
-        supabase.functions.invoke('get-pending-users'),
-        supabase.functions.invoke('get-active-users'),
-        supabase.from('companies').select('*', { count: 'exact', head: true })
+      // Busca direta no banco de dados para evitar dependência de Edge Functions desatualizadas
+      const [pendingCount, activeUsers, companiesCount] = await Promise.all([
+        supabase
+          .from('user_account_status')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        supabase
+          .from('user_account_status')
+          .select('user_id, is_active')
+          .eq('status', 'approved'),
+        supabase
+          .from('companies')
+          .select('*', { count: 'exact', head: true })
       ]);
 
-      // Handle potential errors from edge functions
-      if (pendingResult.error) {
-        console.error('Error fetching pending users:', pendingResult.error);
-      }
-      if (activeResult.error) {
-        console.error('Error fetching active users:', activeResult.error);
-      }
-      if (companiesResult.error) {
-        console.error('Error fetching companies:', companiesResult.error);
-      }
+      // Buscar roles para filtrar parceiros ativos
+      const activeUserIds = activeUsers.data?.map(u => u.user_id) || [];
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', activeUserIds);
 
-      const pendingUsers = pendingResult.data || [];
-      const activeUsers = activeResult.data || [];
-      const partnersCount = Array.isArray(activeUsers)
-        ? activeUsers.filter((u: any) => u.role === 'partner').length
-        : 0;
+      const activePartners = activeUsers.data?.filter(u => {
+        const role = rolesData?.find(r => r.user_id === u.user_id)?.role;
+        return u.is_active && role === 'partner';
+      }).length || 0;
 
       setStats({
-        totalUsers: Array.isArray(activeUsers) ? activeUsers.length : 0,
-        pendingUsers: Array.isArray(pendingUsers) ? pendingUsers.length : 0,
-        totalCompanies: companiesResult.count || 0,
-        activePartners: partnersCount,
+        totalUsers: activeUsers.data?.length || 0,
+        pendingUsers: pendingCount.count || 0,
+        totalCompanies: companiesCount.count || 0,
+        activePartners: activePartners,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -114,7 +125,7 @@ const AdminDashboard = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar para Início
           </Button>
-          <DynamicLogo className="h-8 w-auto" variant="light" />
+          <DynamicLogo className="h-8 w-auto" variant="dark" />
         </div>
 
         {/* Page Title */}

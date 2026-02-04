@@ -36,7 +36,7 @@ const Ferramentas = () => {
     description: 'Ferramenta avançada de busca e filtros para encontrar rapidamente imóveis que atendem aos critérios específicos dos clientes.',
     icon: Search,
     status: 'available',
-    route: 'https://finder.autoridadeinvestimentos.com.br',
+    route: 'https://finder.referenciacapital.com.br/',
     gradient: 'from-accent/10 to-accent/5',
     external: true
   }];

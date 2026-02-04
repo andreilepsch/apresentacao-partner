@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBranding } from '@/contexts/BrandingContext';
 import { useAuthContext } from '@/contexts/AuthContext';
+import { PageContext } from '@/types/pageContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,13 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Loader2, RotateCcw, ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { Loader2, RotateCcw, ArrowLeft, Plus, Trash2, FileText, ImageIcon } from 'lucide-react';
 import ImageUpload from '@/components/ImageUpload';
+import { useMeeting2PDFGenerator } from '@/hooks/useMeeting2PDFGenerator';
 import { Badge } from '@/components/ui/badge';
-import { PersonalDataForm } from '@/components/profile/PersonalDataForm';
-import { PasswordUpdateForm } from '@/components/profile/PasswordUpdateForm';
+import { MediaCard } from '@/contexts/BrandingContext';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { maskPhone, maskCnpj, maskCep, maskWhatsapp } from '@/utils/masks';
 
 interface MetricData {
   value: string;
@@ -26,11 +29,14 @@ const BrandingSettings = () => {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
-  const { branding, updateBranding, resetToDefaults, isLoading } = useBranding();
-  const [personalData, setPersonalData] = useState({
-    fullName: user?.user_metadata?.full_name || '',
-    email: user?.email || ''
-  });
+  const { branding, updateBranding, resetToDefaults, isLoading, setPageContext } = useBranding();
+  const { generateMeeting2PDF } = useMeeting2PDFGenerator();
+
+  useEffect(() => {
+    setPageContext(PageContext.PRESENTATION);
+  }, [setPageContext]);
+
+
   const [formData, setFormData] = useState({
     companyName: branding.companyName,
     logoUrl: branding.logoUrl || '',
@@ -63,14 +69,7 @@ const BrandingSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      setPersonalData({
-        fullName: user.user_metadata?.full_name || '',
-        email: user.email || ''
-      });
-    }
-  }, [user]);
+
 
   useEffect(() => {
     setFormData({
@@ -100,31 +99,25 @@ const BrandingSettings = () => {
       pdfBackgroundColor: branding.pdfBackgroundColor,
       pdfAccentColor: branding.pdfAccentColor,
       pdfLogoUrl: branding.pdfLogoUrl || '',
+      pdfLogoUrl: branding.pdfLogoUrl || '',
       logoNegativeUrl: branding.logoNegativeUrl || '',
+      mediaJson: branding.mediaJson,
     });
   }, [branding]);
 
-  const handleUpdateName = async () => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { full_name: personalData.fullName }
-      });
-
-      if (error) throw error;
-
-      toast.success('Nome atualizado com sucesso!');
-    } catch (error: any) {
-      console.error('Error updating name:', error);
-      toast.error('Erro ao atualizar nome');
-    }
+  const updateMediaCard = (index: number, field: keyof MediaCard, value: string) => {
+    const newMedia = [...formData.mediaJson];
+    newMedia[index] = { ...newMedia[index], [field]: value };
+    setFormData({ ...formData, mediaJson: newMedia });
   };
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
 
     try {
-      await handleUpdateName();
       await updateBranding(formData);
       toast.success('Dados atualizados com sucesso!');
     } catch (error) {
@@ -190,10 +183,8 @@ const BrandingSettings = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-8">
-              <TabsTrigger value="profile">Perfil</TabsTrigger>
-              <TabsTrigger value="basic">Básico</TabsTrigger>
+          <Tabs defaultValue="images" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="images">Imagens</TabsTrigger>
               <TabsTrigger value="metrics">Métricas</TabsTrigger>
               <TabsTrigger value="texts">Textos</TabsTrigger>
@@ -202,85 +193,7 @@ const BrandingSettings = () => {
               <TabsTrigger value="pdf">PDF</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="profile" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dados Pessoais</CardTitle>
-                  <CardDescription>Informações da sua conta</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PersonalDataForm
-                    fullName={personalData.fullName}
-                    email={personalData.email}
-                    role={isAdmin ? 'admin' : 'partner'}
-                    onFullNameChange={(value) => setPersonalData({ ...personalData, fullName: value })}
-                    canEditEmail={false}
-                    showRole={true}
-                  />
-                </CardContent>
-              </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Segurança</CardTitle>
-                  <CardDescription>Altere sua senha</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <PasswordUpdateForm />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="basic" className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Informações Básicas da Empresa</CardTitle>
-                  <CardDescription>
-                    {isAdmin
-                      ? 'Configure o nome e slogan da empresa. As cores da apresentação são padrão do sistema.'
-                      : 'Você pode personalizar alguns campos. Campos bloqueados são definidos pelo administrador.'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="companyName" className="flex items-center gap-2">
-                      Nome da Empresa (Fantasia)
-                      {roleLoading ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        !isAdmin && <Badge variant="outline">Apenas Administradores</Badge>
-                      )}
-                    </Label>
-                    <Input
-                      id="companyName"
-                      value={formData.companyName}
-                      onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                      placeholder="Nome da sua empresa"
-                      disabled={!isAdmin && !roleLoading && user?.email !== 'contato@autoridadeinvestimentos.com.br'}
-                    />
-                    {!isAdmin && !roleLoading && user?.email !== 'contato@autoridadeinvestimentos.com.br' && (
-                      <p className="text-xs text-muted-foreground italic">
-                        Contate o administrador para alterar o nome da empresa.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="companyTagline">
-                      Slogan / Tagline
-                      {!isAdmin && <Badge className="ml-2" variant="secondary">Editável</Badge>}
-                    </Label>
-                    <Textarea
-                      id="companyTagline"
-                      value={formData.companyTagline}
-                      onChange={(e) => setFormData({ ...formData, companyTagline: e.target.value })}
-                      placeholder="Transformando patrimônio em renda..."
-                      rows={3}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
             <TabsContent value="images" className="space-y-6">
               <Card>
@@ -292,7 +205,7 @@ const BrandingSettings = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label>Logo da Empresa</Label>
-                      {!isAdmin && <Badge variant="outline">Apenas Admin</Badge>}
+                      {!isAdmin && <Badge variant="secondary">Editável</Badge>}
                     </div>
                     <ImageUpload
                       label=""
@@ -331,7 +244,7 @@ const BrandingSettings = () => {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <Label>Logo Negativa (Para fundos escuros)</Label>
-                      {!isAdmin && <Badge variant="outline">Apenas Admin</Badge>}
+                      {!isAdmin && <Badge variant="secondary">Editável</Badge>}
                     </div>
                     <ImageUpload
                       label=""
@@ -454,60 +367,173 @@ const BrandingSettings = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Textos Personalizáveis</CardTitle>
-                  <CardDescription>Pergunta de feedback e citação de autoridade</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="feedbackQuestion">Pergunta de Feedback</Label>
-                    <Input
-                      id="feedbackQuestion"
-                      value={formData.feedbackQuestion}
-                      onChange={(e) => setFormData({ ...formData, feedbackQuestion: e.target.value })}
-                      placeholder="De 0 a 10 quanto você gostou do nosso atendimento?"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Pergunta mostrada na avaliação final
-                    </p>
-                  </div>
+                <CardContent>
+                  <Tabs defaultValue="recognition" className="w-full">
+                    <TabsList className="w-full mb-6">
+                      <TabsTrigger value="recognition" className="flex-1">Reconhecimento</TabsTrigger>
+                      <TabsTrigger value="feedback" className="flex-1">Perguntas e Feedback</TabsTrigger>
+                    </TabsList>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="authorityQuote">Citação de Autoridade</Label>
-                    <Textarea
-                      id="authorityQuote"
-                      value={formData.authorityQuote}
-                      onChange={(e) => setFormData({ ...formData, authorityQuote: e.target.value })}
-                      placeholder="A credibilidade conquistada junto à mídia..."
-                      rows={3}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Citação exibida na página de reconhecimento
-                    </p>
-                  </div>
+                    <TabsContent value="feedback" className="space-y-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="feedbackQuestion">Pergunta de Feedback</Label>
+                        <Input
+                          id="feedbackQuestion"
+                          value={formData.feedbackQuestion}
+                          onChange={(e) => setFormData({ ...formData, feedbackQuestion: e.target.value })}
+                          placeholder="De 0 a 10 quanto você gostou do nosso atendimento?"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Pergunta mostrada na avaliação final
+                        </p>
+                      </div>
+                    </TabsContent>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="authorityQuoteAuthor">Autor da Citação</Label>
-                      <Input
-                        id="authorityQuoteAuthor"
-                        value={formData.authorityQuoteAuthor}
-                        onChange={(e) => setFormData({ ...formData, authorityQuoteAuthor: e.target.value })}
-                        placeholder="Seu Nome"
-                      />
-                    </div>
+                    <TabsContent value="recognition" className="space-y-8">
+                      {/* Citação Section */}
+                      <div className="space-y-6 border-b pb-8">
+                        <div>
+                          <h3 className="text-lg font-medium mb-2">Citação de Autoridade</h3>
+                          <p className="text-sm text-muted-foreground mb-4">Frase destacada de autoridade ou do parceiro</p>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="authorityQuoteRole">Cargo do Autor</Label>
-                      <Input
-                        id="authorityQuoteRole"
-                        value={formData.authorityQuoteRole}
-                        onChange={(e) => setFormData({ ...formData, authorityQuoteRole: e.target.value })}
-                        placeholder="CEO da Empresa"
-                      />
-                    </div>
-                  </div>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="authorityQuote">Citação</Label>
+                              <Textarea
+                                id="authorityQuote"
+                                value={formData.authorityQuote}
+                                onChange={(e) => setFormData({ ...formData, authorityQuote: e.target.value })}
+                                placeholder="A credibilidade conquistada junto à mídia..."
+                                rows={3}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label htmlFor="authorityQuoteAuthor">Autor da Citação</Label>
+                                <Input
+                                  id="authorityQuoteAuthor"
+                                  value={formData.authorityQuoteAuthor}
+                                  onChange={(e) => setFormData({ ...formData, authorityQuoteAuthor: e.target.value })}
+                                  placeholder="Seu Nome"
+                                />
+                              </div>
+
+                              <div className="space-y-2">
+                                <Label htmlFor="authorityQuoteRole">Cargo do Autor</Label>
+                                <Input
+                                  id="authorityQuoteRole"
+                                  value={formData.authorityQuoteRole}
+                                  onChange={(e) => setFormData({ ...formData, authorityQuoteRole: e.target.value })}
+                                  placeholder="CEO da Empresa"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Media Section */}
+                      <div className="space-y-6">
+                        <div>
+                          <h3 className="text-lg font-medium mb-2">Na Mídia</h3>
+                          <p className="text-sm text-muted-foreground mb-4">Artigos e notícias destacadas (Área de 3 colunas)</p>
+
+                          <div className="space-y-8">
+                            {formData.mediaJson && formData.mediaJson.map((card, index) => (
+                              <div key={card.id || index} className="p-4 border rounded-lg space-y-4 bg-accent/5">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-semibold text-base">Card {index + 1}</h4>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label>Nome do Veículo (Header)</Label>
+                                    <Input
+                                      value={card.outletName}
+                                      onChange={(e) => updateMediaCard(index, 'outletName', e.target.value)}
+                                      placeholder="Ex: VEJA SÃO PAULO"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Cor do Fundo do Header</Label>
+                                    <div className="flex gap-2">
+                                      <Input
+                                        type="color"
+                                        value={card.headerColor}
+                                        onChange={(e) => updateMediaCard(index, 'headerColor', e.target.value)}
+                                        className="w-12 h-10 p-1"
+                                      />
+                                      <Input
+                                        value={card.headerColor}
+                                        onChange={(e) => updateMediaCard(index, 'headerColor', e.target.value)}
+                                        placeholder="#000000"
+                                        className="flex-1"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Cor do Texto do Header</Label>
+                                    <div className="flex gap-2">
+                                      <Input
+                                        type="color"
+                                        value={card.headerTextColor}
+                                        onChange={(e) => updateMediaCard(index, 'headerTextColor', e.target.value)}
+                                        className="w-12 h-10 p-1"
+                                      />
+                                      <Input
+                                        value={card.headerTextColor}
+                                        onChange={(e) => updateMediaCard(index, 'headerTextColor', e.target.value)}
+                                        placeholder="#FFFFFF"
+                                        className="flex-1"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Título da Matéria</Label>
+                                  <Input
+                                    value={card.title}
+                                    onChange={(e) => updateMediaCard(index, 'title', e.target.value)}
+                                    placeholder="Título principal do card"
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Descrição / Resumo</Label>
+                                  <Textarea
+                                    value={card.description}
+                                    onChange={(e) => updateMediaCard(index, 'description', e.target.value)}
+                                    placeholder="Texto do corpo do card"
+                                    rows={4}
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label>Imagem (Opcional)</Label>
+                                  <ImageUpload
+                                    label="Imagem da Matéria"
+                                    currentImageUrl={card.imageUrl || null}
+                                    onImageChange={(url) => updateMediaCard(index, 'imageUrl', url || '')}
+                                    folder="media"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
             </TabsContent>
+
+
+
+
 
             <TabsContent value="contact" className="space-y-6">
               <Card>
@@ -521,7 +547,7 @@ const BrandingSettings = () => {
                     <Input
                       id="contactPhone"
                       value={formData.contactPhone}
-                      onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, contactPhone: maskPhone(e.target.value) })}
                       placeholder="(11) 99999-9999"
                     />
                   </div>
@@ -542,8 +568,8 @@ const BrandingSettings = () => {
                     <Input
                       id="contactWhatsapp"
                       value={formData.contactWhatsapp}
-                      onChange={(e) => setFormData({ ...formData, contactWhatsapp: e.target.value })}
-                      placeholder="5511999999999"
+                      onChange={(e) => setFormData({ ...formData, contactWhatsapp: maskWhatsapp(e.target.value) })}
+                      placeholder="+55 (11) 99999-9999"
                     />
                   </div>
                 </CardContent>
@@ -572,7 +598,7 @@ const BrandingSettings = () => {
                     <Input
                       id="contractCnpj"
                       value={formData.contractCnpj}
-                      onChange={(e) => setFormData({ ...formData, contractCnpj: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, contractCnpj: maskCnpj(e.target.value) })}
                       placeholder="00.000.000/0001-00"
                     />
                   </div>
@@ -603,7 +629,7 @@ const BrandingSettings = () => {
                       <Input
                         id="contractCep"
                         value={formData.contractCep}
-                        onChange={(e) => setFormData({ ...formData, contractCep: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, contractCep: maskCep(e.target.value) })}
                         placeholder="00000-000"
                       />
                     </div>
@@ -699,6 +725,58 @@ const BrandingSettings = () => {
                         placeholder="#B78D4A"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-border mt-4">
+                    <Label>Teste de Geração</Label>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Gere um PDF de teste para visualizar como suas configurações de cores e logo serão aplicadas.
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => generateMeeting2PDF({
+                        clientName: "Cliente Exemplo da Silva",
+                        selectedCredit: {
+                          creditValue: "R$ 500.000,00",
+                          installment: "R$ 2.500,00",
+                          estimatedIncome: "R$ 15.000,00",
+                          patrimony: "R$ 1.500.000,00"
+                        },
+                        administrator: {
+                          name: "Administradora Exemplo",
+                          highlights: ["Taxas competitivas", "Processo ágil", "Tradição no mercado"],
+                          trustIndicators: [
+                            { number: "40+", label: "Anos de história" },
+                            { number: "100k", label: "Clientes ativos" }
+                          ]
+                        },
+                        commitments: [
+                          { title: "Envio de Documentos", description: "RG, CPF e Comprovante de Residência", icon: "file-text" },
+                          { title: "Pagamento da 1ª Parcela", description: "Boleto bancário", icon: "credit-card" }
+                        ],
+                        cycles: []
+                      }, {
+                        // Pass current form data as branding override
+                        ...branding,
+                        companyName: formData.companyName,
+                        pdfLogoUrl: formData.pdfLogoUrl,
+                        logoUrl: formData.logoUrl,
+                        pdfBackgroundColor: formData.pdfBackgroundColor,
+                        pdfAccentColor: formData.pdfAccentColor,
+                        contractCnpj: formData.contractCnpj,
+                        contractWebsite: formData.contractWebsite,
+                        companyTagline: formData.companyTagline,
+                        contactPhone: formData.contactPhone,
+                        contactEmail: formData.contactEmail,
+                        contactWhatsapp: formData.contactWhatsapp,
+                        pdfIntroText: formData.pdfIntroText
+                      })}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Baixar PDF de Teste
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

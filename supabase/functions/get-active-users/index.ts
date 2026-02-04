@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -27,8 +27,8 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       console.error('No authorization header');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }), 
-        { 
+        JSON.stringify({ error: 'Unauthorized' }),
+        {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -37,12 +37,12 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('Auth error:', authError);
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }), 
-        { 
+        JSON.stringify({ error: 'Invalid token' }),
+        {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -61,8 +61,8 @@ Deno.serve(async (req) => {
     if (roleError || roleData?.role !== 'admin') {
       console.error('Role check failed:', roleError, roleData);
       return new Response(
-        JSON.stringify({ error: 'Forbidden - Admin access required' }), 
-        { 
+        JSON.stringify({ error: 'Forbidden - Admin access required' }),
+        {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -72,17 +72,31 @@ Deno.serve(async (req) => {
     console.log('Admin verified, fetching active users...');
 
     // Buscar usuários com status 'approved'
-    const { data: approvedStatuses, error: statusError } = await supabaseAdmin
+    // Tentar buscar por approved_at primeiro, se falhar tenta por created_at
+    let { data: approvedStatuses, error: statusError } = await supabaseAdmin
       .from('user_account_status')
       .select('user_id, approved_at, approved_by, is_active')
       .eq('status', 'approved')
       .order('approved_at', { ascending: false });
 
+    // Se falhar por causa da coluna, tenta por created_at
+    if (statusError) {
+      console.warn('approved_at column might be missing, trying created_at for approved statuses');
+      const retryResult = await supabaseAdmin
+        .from('user_account_status')
+        .select('user_id, approved_at, approved_by, is_active')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false });
+
+      approvedStatuses = retryResult.data;
+      statusError = retryResult.error;
+    }
+
     if (statusError) {
       console.error('Error fetching approved statuses:', statusError);
       return new Response(
-        JSON.stringify({ error: statusError.message }), 
-        { 
+        JSON.stringify({ error: statusError.message }),
+        {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
@@ -133,16 +147,22 @@ Deno.serve(async (req) => {
       .in('user_id', userIds);
 
     // Buscar metadados de auth em paralelo (necessário para email)
-    const authUsersPromises = userIds.map(id => 
+    const authUsersPromises = userIds.map(id =>
       supabaseAdmin.auth.admin.getUserById(id)
     );
     const authUsersResults = await Promise.all(authUsersPromises);
 
-    // Buscar vinculações de empresas
-    const { data: userCompaniesData } = await supabaseAdmin
-      .from('user_companies')
-      .select('user_id, company_id')
-      .in('user_id', userIds);
+    // Buscar vinculações de empresas - Envolvido em try/catch para não quebrar a função principal
+    let userCompaniesData = [];
+    try {
+      const { data: ucData } = await supabaseAdmin
+        .from('user_companies')
+        .select('user_id, company_id')
+        .in('user_id', userIds);
+      userCompaniesData = ucData || [];
+    } catch (e) {
+      console.error('Error fetching user_companies, continuing without it:', e);
+    }
 
     // Extrair company_ids únicos
     const companyIds = Array.from(new Set(
@@ -168,7 +188,7 @@ Deno.serve(async (req) => {
       const authUser = authResult.data.user;
       const companyId = userCompanyMap.get(status.user_id);
       const companyName = companyId ? (companyNameMap.get(companyId) || 'Sem empresa') : 'Sem empresa';
-      
+
       return {
         id: status.user_id,
         user_id: status.user_id,

@@ -42,54 +42,61 @@ const EditUserProfile = () => {
   const fetchUserData = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) throw new Error('No session');
+      if (!userId) return;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-user-details?userId=${userId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      // 1. Buscar Perfil (Nome, Email)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', userId)
+        .single();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch user details');
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        // Não lançar erro aqui, tentar buscar outros dados
       }
 
-      const data = await response.json();
-      
-      // Buscar empresa vinculada do usuário via user_companies
+      // 2. Buscar Role
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      // 3. Buscar Empresa Vinculada
+      const { data: userCompany } = await supabase
+        .from('user_companies')
+        .select('company_id')
+        .eq('user_id', userId)
+        .maybeSingle();
+
       let companyName = '';
-      if (data.companyId) {
+      if (userCompany?.company_id) {
         const { data: company } = await supabase
           .from('companies')
           .select('company_name')
-          .eq('id', data.companyId)
-          .single();
-        
+          .eq('id', userCompany.company_id)
+          .maybeSingle();
         companyName = company?.company_name || '';
       }
 
       setUserData({
-        fullName: data.fullName || '',
-        email: data.email || '',
-        role: data.role || 'partner',
+        fullName: profile?.full_name || '',
+        email: profile?.email || '',
+        role: (roleData?.role as 'admin' | 'partner') || 'partner',
         companyName,
       });
 
-      // Buscar empresas disponíveis da tabela companies
+      // 4. Buscar lista de empresas para o dropdown
       const { data: companies } = await supabase
         .from('companies')
         .select('id, company_name')
         .order('company_name');
 
       if (companies) {
-        setAvailableCompanies(companies.map(c => c.company_name));
+        // Remover duplicatas e valores vazios
+        const uniqueCompanies = Array.from(new Set(companies.map(c => c.company_name).filter(Boolean)));
+        setAvailableCompanies(uniqueCompanies);
       }
     } catch (error: any) {
       console.error('Error fetching user data:', error);
@@ -102,38 +109,23 @@ const EditUserProfile = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) throw new Error('No session');
+      if (!userId) return;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId,
-            fullName: userData.fullName,
-            email: userData.email,
-            role: userData.role,
-            companyName: userData.companyName || null,
-          })
-        }
-      );
+      const { error } = await supabase.rpc('admin_update_user_profile', {
+        _user_id: userId,
+        _full_name: userData.fullName,
+        _email: userData.email,
+        _role: userData.role,
+        _company_name: userData.companyName
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update user');
-      }
+      if (error) throw error;
 
       toast.success('Usuário atualizado com sucesso!');
       navigate('/admin/users');
     } catch (error: any) {
       console.error('Error saving user:', error);
-      toast.error('Erro ao salvar: ' + error.message);
+      toast.error('Erro ao salvar: ' + (error.message || error.error_description || 'Erro desconhecido'));
     } finally {
       setSaving(false);
     }
@@ -180,7 +172,7 @@ const EditUserProfile = () => {
                 onChange={(e) => setUserData({ ...userData, fullName: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="email">Email</Label>
               <Input
@@ -190,7 +182,7 @@ const EditUserProfile = () => {
                 onChange={(e) => setUserData({ ...userData, email: e.target.value })}
               />
             </div>
-            
+
             <div>
               <Label htmlFor="role">Perfil</Label>
               <Select
@@ -208,7 +200,7 @@ const EditUserProfile = () => {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div>
               <Label htmlFor="company">Empresa Vinculada</Label>
               <div className="space-y-2">

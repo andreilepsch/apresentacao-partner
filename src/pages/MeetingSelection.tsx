@@ -14,7 +14,7 @@ const MeetingSelection = () => {
   const { navigateWithPreview } = usePreviewNavigation();
   const { user, signOut } = useAuthContext();
   const { isAdmin: roleAdmin } = useUserRole();
-  const { setPageContext } = useBranding();
+  const { setPageContext, refetchBranding } = useBranding();
   const navigate = useNavigate();
 
   // Forçar detecção de admin para o e-mail do usuário em caso de falha no hook
@@ -23,9 +23,12 @@ const MeetingSelection = () => {
   // Define pageContext ao montar o componente
   useEffect(() => {
     setPageContext(PageContext.NAVIGATION);
+    // Forçar recarregamento para garantir que a logo negativa (se cadastrada) venha do banco
+    refetchBranding(PageContext.NAVIGATION);
+
     console.log('🧭 MeetingSelection: PageContext set to NAVIGATION');
     console.log('👑 MeetingSelection: isAdmin status ->', isAdmin, 'Email:', user?.email);
-  }, [isAdmin, user, setPageContext]);
+  }, [isAdmin, user, setPageContext, refetchBranding]);
 
   const handleLogout = async () => {
     await signOut();
@@ -48,6 +51,32 @@ const MeetingSelection = () => {
 
       <div className="relative z-20 flex items-center justify-center p-4 min-h-screen">
         <div className="w-full max-w-6xl animate-fade-in">
+          {/* Header Actions */}
+          <div className="flex justify-end gap-4 mb-4 relative z-30">
+            {isAdmin && (
+              <Button
+                onClick={() => navigate("/admin")}
+                variant="ghost"
+                className="px-6 py-2 text-sm font-medium bg-[#C9A45C]/20 border border-[#C9A45C] text-white hover:bg-[#C9A45C] transition-all duration-300 rounded-lg cursor-pointer shadow-lg shadow-[#C9A45C]/10"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Painel Administrativo
+              </Button>
+            )}
+
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
+              variant="ghost"
+              className="px-6 py-2 text-sm font-medium bg-white/5 border border-white/20 text-white hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm transition-all duration-300 rounded-lg cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
+
           {/* Header Section */}
           <div className="text-center mb-16">
             <div className="flex justify-center mb-8">
@@ -137,31 +166,7 @@ const MeetingSelection = () => {
             </Card>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8 animate-fade-in relative z-30">
-            {isAdmin && (
-              <Button
-                onClick={() => navigate("/admin")}
-                variant="ghost"
-                className="w-full sm:w-auto px-8 py-3 text-base bg-[#C9A45C]/20 border-2 border-[#C9A45C] text-white hover:bg-[#C9A45C] transition-all duration-300 rounded-xl cursor-pointer relative z-40 shadow-lg shadow-[#C9A45C]/20"
-              >
-                <Settings className="mr-2 h-4 w-4 text-[#C9A45C] group-hover:text-white" />
-                Painel Administrativo
-              </Button>
-            )}
 
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLogout();
-              }}
-              variant="ghost"
-              className="w-full sm:w-auto px-8 py-3 text-base bg-white/5 border-2 border-white/20 text-white hover:bg-white/10 hover:border-[#C9A45C] hover:text-[#C9A45C] backdrop-blur-sm transition-all duration-300 rounded-xl cursor-pointer relative z-40"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
         </div>
       </div>
 

@@ -38,7 +38,19 @@ interface BrandingData {
   pdfBackgroundColor: string;
   pdfAccentColor: string;
   pdfLogoUrl: string | null;
+  pdfLogoUrl: string | null;
   logoNegativeUrl: string | null;
+  mediaJson: MediaCard[];
+}
+
+export interface MediaCard {
+  id: string;
+  outletName: string;
+  headerColor: string;
+  headerTextColor: string;
+  imageUrl?: string;
+  title: string;
+  description: string;
 }
 
 interface BrandingContextType {
@@ -48,7 +60,8 @@ interface BrandingContextType {
   setPageContext: (context: PageContext) => void;
   updateBranding: (data: Partial<BrandingData>) => Promise<void>;
   resetToDefaults: () => Promise<void>;
-  refetchBranding: () => Promise<void>;
+  refetchBranding: (overrideContext?: PageContext) => Promise<void>;
+  activeCompanyId: string | null;
 }
 
 const defaultBranding: BrandingData = {
@@ -64,6 +77,35 @@ const defaultBranding: BrandingData = {
     { value: "R$ 2.4Bi", label: "Em créditos gerenciados" },
     { value: "15 anos", label: "De experiência no mercado" },
     { value: "98%", label: "De satisfação dos clientes" }
+  ],
+  mediaJson: [
+    {
+      id: '1',
+      outletName: 'VEJA SÃO PAULO',
+      headerColor: '#D92525',
+      headerTextColor: '#FFFFFF',
+      title: 'Confira os 4 melhores bairros de SP para investir em imóveis para temporada',
+      description: 'São Paulo vem se consolidando como um dos principais polos de alugueis de temporada, por plataformas como Airbnb, no Brasil, impulsionada por sua relevância econômica, efervescência cultural e a intensa agenda de eventos ao longo do ano.',
+      imageUrl: '/media/defaults/veja.png'
+    },
+    {
+      id: '2',
+      outletName: 'VALOR ECONÔMICO',
+      headerColor: '#005F4E',
+      headerTextColor: '#FFFFFF',
+      title: 'Sob pressão de dívida, empresas mantêm venda de imóvel seguida de locação',
+      description: 'Demanda de fundos por operações de "sale and leaseback" pode ser afetada pelo cenário de juros altos; varejo e saúde são vendedores.',
+      imageUrl: '/media/defaults/valor.png'
+    },
+    {
+      id: '3',
+      outletName: 'FOLHA DE S.PAULO',
+      headerColor: '#000000',
+      headerTextColor: '#FFFFFF',
+      title: 'Juros altos podem adiar financiamento do primeiro imóvel; veja dicas',
+      description: 'Especialistas mostram erros comuns e destacam cuidados ao assumir uma dívida de longo prazo.',
+      imageUrl: '/media/defaults/folha.png'
+    }
   ],
   contactPhone: null,
   contactEmail: null,
@@ -93,6 +135,7 @@ const BrandingContext = createContext<BrandingContextType>({
   updateBranding: async () => { },
   resetToDefaults: async () => { },
   refetchBranding: async () => { },
+  activeCompanyId: null,
 });
 
 export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -101,7 +144,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [branding, setBranding] = useState<BrandingData>(defaultBranding);
   const [isLoading, setIsLoading] = useState(true);
   const [pageContext, setPageContext] = useState<PageContext>(PageContext.AUTHENTICATION);
-  const [cachedCompanyId, setCachedCompanyId] = useState<string | null>(null);
+  const [activeCompanyId, setCachedCompanyId] = useState<string | null>(null);
 
   // Preload critical images for instant loading
   const preloadImages = (brandingData: BrandingData) => {
@@ -120,17 +163,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   };
 
-  const fetchBranding = async () => {
-    console.log('🔍 fetchBranding called:', {
-      isPreviewMode,
-      previewCompanyId,
-      hasUser: !!user,
-      pageContext
-    });
+  const fetchBranding = async (overrideContext?: PageContext) => {
+    const effectiveContext = overrideContext || pageContext;
 
     // AUTHENTICATION: Sempre usar branding padrão
-    if (pageContext === PageContext.AUTHENTICATION) {
-      console.log('🎯 Using default branding for AUTHENTICATION');
+    if (effectiveContext === PageContext.AUTHENTICATION) {
       setBranding(defaultBranding);
       setIsLoading(false);
       return;
@@ -138,8 +175,8 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // ✅ Permitir preview sem autenticação (apenas em PRESENTATION)
     if (!user && !isPreviewMode) {
-      console.log('⚠️ No user and not preview mode, using defaults');
       setBranding(defaultBranding);
+      setCachedCompanyId(null);
       setIsLoading(false);
       return;
     }
@@ -151,17 +188,17 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // PRESENTATION MODE: Preview mode - usar company_id do preview
       if (isPreviewMode && previewCompanyId) {
         companyId = previewCompanyId;
-        console.log('🎨 Preview Mode: Loading branding for company', companyId);
       } else if (user) {
         // PRESENTATION MODE: Normal mode - buscar company_id do usuário
-        const { data: userCompany } = await supabase
+        const { data: userCompany, error: userCompError } = await supabase
           .from('user_companies')
           .select('company_id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        companyId = userCompany?.company_id || null;
-        console.log('👤 User company mapping:', userCompany);
+        if (userCompError) console.error('❌ Error fetching user_companies:', userCompError);
+        // Tenta pegar do banco, se não tiver, tenta do metadata
+        companyId = userCompany?.company_id || user.user_metadata?.company_id || null;
       }
 
       setCachedCompanyId(companyId);
@@ -170,7 +207,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // ✅ IMPORTANTE: Buscar branding da empresa publicamente (funciona sem autenticação)
       if (companyId) {
-        console.log('📡 Fetching company data for ID:', companyId);
         const { data: company, error: companyError } = await supabase
           .from('companies')
           .select('*')
@@ -182,7 +218,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
 
         if (!companyError && company) {
-          console.log('✅ Found company data:', company);
           brandingData = {
             companyName: company.company_name || defaultBranding.companyName,
             companyTagline: company.company_tagline || defaultBranding.companyTagline,
@@ -196,10 +231,11 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             contactEmail: company.contact_email || defaultBranding.contactEmail,
             contactWhatsapp: company.contact_whatsapp || defaultBranding.contactWhatsapp,
             feedbackQuestion: company.feedback_question || defaultBranding.feedbackQuestion,
-            authorityQuote: company.authority_quote || defaultBranding.authorityQuote,
-            authorityQuoteAuthor: company.authority_quote_author || defaultBranding.authorityQuoteAuthor,
-            authorityQuoteRole: company.authority_quote_role || defaultBranding.authorityQuoteRole,
-            metricsJson: company.metrics_json || defaultBranding.metricsJson,
+            authorityQuote: company.authority_quote ?? defaultBranding.authorityQuote,
+            authorityQuoteAuthor: company.authority_quote_author ?? defaultBranding.authorityQuoteAuthor,
+            authorityQuoteRole: company.authority_quote_role ?? defaultBranding.authorityQuoteRole,
+            metricsJson: company.metrics_json ?? defaultBranding.metricsJson,
+            mediaJson: company.media_json ?? defaultBranding.mediaJson,
             contractCompanyName: company.contract_company_name || defaultBranding.contractCompanyName,
             contractCnpj: company.contract_cnpj || defaultBranding.contractCnpj,
             contractAddress: company.contract_address || defaultBranding.contractAddress,
@@ -233,7 +269,6 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       // Fallback para user_branding (apenas se não estiver em preview)
       if (user) {
-        console.log('Falling back to own user_branding');
         const { data: legacyData, error: legacyError } = await supabase
           .from('user_branding')
           .select('*')
@@ -291,6 +326,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Campos que usuários NÃO-ADMIN podem editar
   const USER_EDITABLE_FIELDS = [
+    'companyName',
     'companyTagline',
     'teamPhotoUrl',
     'partnerPhotoUrl',
@@ -314,7 +350,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       console.log('🔄 updateBranding: User is admin?', isAdmin, 'Email:', user.email);
 
-      if (!cachedCompanyId) {
+      if (!activeCompanyId) {
         // Tentar obter company_id do metadata se o cache falhou
         const metadataCompanyId = user.user_metadata?.company_id;
         if (metadataCompanyId) {
@@ -325,7 +361,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
 
-      const activeCompanyId = cachedCompanyId || user.user_metadata?.company_id;
+      const targetCompanyId = activeCompanyId || user.user_metadata?.company_id;
 
       // Preparar dados para atualização
       let updateData: any = {};
@@ -341,13 +377,14 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (data.teamPhotoUrl !== undefined) updateData.team_photo_url = data.teamPhotoUrl || null;
         if (data.partnerPhotoUrl !== undefined) updateData.mentor_photo_url = data.partnerPhotoUrl || null;
         if (data.metricsJson !== undefined) updateData.metrics_json = data.metricsJson as any;
+        if (data.mediaJson !== undefined) updateData.media_json = data.mediaJson as any;
         if (data.contactPhone !== undefined) updateData.contact_phone = data.contactPhone || null;
         if (data.contactEmail !== undefined) updateData.contact_email = data.contactEmail || null;
         if (data.contactWhatsapp !== undefined) updateData.contact_whatsapp = data.contactWhatsapp || null;
         if (data.feedbackQuestion !== undefined) updateData.feedback_question = data.feedbackQuestion || null;
-        if (data.authorityQuote !== undefined) updateData.authority_quote = data.authorityQuote || null;
-        if (data.authorityQuoteAuthor !== undefined) updateData.authority_quote_author = data.authorityQuoteAuthor || null;
-        if (data.authorityQuoteRole !== undefined) updateData.authority_quote_role = data.authorityQuoteRole || null;
+        if (data.authorityQuote !== undefined) updateData.authority_quote = data.authorityQuote;
+        if (data.authorityQuoteAuthor !== undefined) updateData.authority_quote_author = data.authorityQuoteAuthor;
+        if (data.authorityQuoteRole !== undefined) updateData.authority_quote_role = data.authorityQuoteRole;
         if (data.contractCompanyName !== undefined) updateData.contract_company_name = data.contractCompanyName || null;
         if (data.contractCnpj !== undefined) updateData.contract_cnpj = data.contractCnpj || null;
         if (data.contractAddress !== undefined) updateData.contract_address = data.contractAddress || null;
@@ -362,11 +399,38 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateData.updated_at = new Date().toISOString();
       } else {
         // Usuário só pode editar campos permitidos
+        if (data.logoUrl !== undefined) updateData.logo_url = data.logoUrl || null;
+        if (data.logoNegativeUrl !== undefined) updateData.logo_negative_url = data.logoNegativeUrl || null;
+        if (data.companyName !== undefined) updateData.company_name = data.companyName;
         if (data.companyTagline !== undefined) updateData.company_tagline = data.companyTagline || null;
         if (data.teamPhotoUrl !== undefined) updateData.team_photo_url = data.teamPhotoUrl || null;
         if (data.partnerPhotoUrl !== undefined) updateData.mentor_photo_url = data.partnerPhotoUrl || null;
+        if (data.metricsJson !== undefined) updateData.metrics_json = data.metricsJson as any;
+        if (data.mediaJson !== undefined) {
+          if (data.mediaJson !== undefined) {
+            updateData.media_json = data.mediaJson as any;
+          }
+          updateData.media_json = data.mediaJson as any;
+        }
         if (data.contactPhone !== undefined) updateData.contact_phone = data.contactPhone || null;
+        if (data.contactEmail !== undefined) updateData.contact_email = data.contactEmail || null;
         if (data.contactWhatsapp !== undefined) updateData.contact_whatsapp = data.contactWhatsapp || null;
+        if (data.feedbackQuestion !== undefined) updateData.feedback_question = data.feedbackQuestion || null;
+        if (data.authorityQuote !== undefined) updateData.authority_quote = data.authorityQuote;
+        if (data.authorityQuoteAuthor !== undefined) updateData.authority_quote_author = data.authorityQuoteAuthor;
+        if (data.authorityQuoteRole !== undefined) updateData.authority_quote_role = data.authorityQuoteRole;
+        if (data.contractCompanyName !== undefined) updateData.contract_company_name = data.contractCompanyName || null;
+        if (data.contractCnpj !== undefined) updateData.contract_cnpj = data.contractCnpj || null;
+        if (data.contractAddress !== undefined) updateData.contract_address = data.contractAddress || null;
+        if (data.contractCity !== undefined) updateData.contract_city = data.contractCity || null;
+        if (data.contractCep !== undefined) updateData.contract_cep = data.contractCep || null;
+
+
+        if (data.contractWebsite !== undefined) updateData.contract_website = data.contractWebsite || null;
+        if (data.pdfIntroText !== undefined) updateData.pdf_intro_text = data.pdfIntroText || null;
+        if (data.pdfBackgroundColor !== undefined) updateData.pdf_background_color = data.pdfBackgroundColor;
+        if (data.pdfAccentColor !== undefined) updateData.pdf_accent_color = data.pdfAccentColor;
+        if (data.pdfLogoUrl !== undefined) updateData.pdf_logo_url = data.pdfLogoUrl || null;
 
         if (Object.keys(updateData).length === 0) {
           throw new Error('Você não tem permissão para editar esses campos');
@@ -376,12 +440,20 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       // Atualizar branding da empresa
-      const { error: updateError } = await supabase
+      const { data: updatedData, error: updateError } = await supabase
         .from('companies')
         .update(updateData)
-        .eq('id', activeCompanyId);
+        .eq('id', targetCompanyId)
+        .select()
+        .single();
 
       if (updateError) throw updateError;
+
+      if (!updatedData) {
+        throw new Error('Empresa não encontrada ou permissão insuficiente para atualizar.');
+      }
+
+
 
       setBranding((prev) => ({ ...prev, ...data }));
       toast.success(
@@ -429,6 +501,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           team_photo_url: defaultBranding.teamPhotoUrl,
           mentor_photo_url: defaultBranding.partnerPhotoUrl,
           metrics_json: defaultBranding.metricsJson as any,
+          media_json: defaultBranding.mediaJson as any,
           contact_phone: defaultBranding.contactPhone,
           contact_email: defaultBranding.contactEmail,
           contact_whatsapp: defaultBranding.contactWhatsapp,
@@ -470,6 +543,7 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         updateBranding,
         resetToDefaults,
         refetchBranding: fetchBranding,
+        activeCompanyId
       }}
     >
       {children}

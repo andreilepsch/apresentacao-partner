@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       console.error('No authorization header');
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -34,10 +34,10 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
+
     if (authError || !user) {
       console.error('Invalid token:', authError);
-      return new Response(JSON.stringify({ error: 'Invalid token' }), { 
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
 
     if (roleData?.role !== 'admin') {
       console.error('User is not admin:', user.id);
-      return new Response(JSON.stringify({ error: 'Forbidden' }), { 
+      return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -61,15 +61,29 @@ Deno.serve(async (req) => {
     console.log('Admin verified, fetching pending users...');
 
     // Buscar usuários pendentes
-    const { data: pendingStatuses, error: statusError } = await supabaseAdmin
+    // Tentar buscar por requested_at primeiro, se falhar tenta por created_at
+    let { data: pendingStatuses, error: statusError } = await supabaseAdmin
       .from('user_account_status')
       .select('*')
       .eq('status', 'pending')
       .order('requested_at', { ascending: false });
 
+    // Se falhar por causa da coluna, tenta por created_at
+    if (statusError) {
+      console.warn('requested_at column might be missing, trying created_at');
+      const retryResult = await supabaseAdmin
+        .from('user_account_status')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      pendingStatuses = retryResult.data;
+      statusError = retryResult.error;
+    }
+
     if (statusError) {
       console.error('Error fetching pending statuses:', statusError);
-      return new Response(JSON.stringify({ error: statusError.message }), { 
+      return new Response(JSON.stringify({ error: statusError.message }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -82,15 +96,16 @@ Deno.serve(async (req) => {
       (pendingStatuses || []).map(async (status) => {
         try {
           const { data: { user: authUser }, error: userError } = await supabaseAdmin.auth.admin.getUserById(status.user_id);
-          
+
           if (userError) {
             console.error(`Error fetching user ${status.user_id}:`, userError);
           }
-          
+
           return {
             ...status,
             email: authUser?.email || 'Email não disponível',
-            full_name: authUser?.user_metadata?.full_name || null
+            full_name: authUser?.user_metadata?.full_name || null,
+            company_name: authUser?.user_metadata?.company_name || null
           };
         } catch (error) {
           console.error(`Exception fetching user ${status.user_id}:`, error);

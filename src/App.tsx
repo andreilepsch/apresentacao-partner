@@ -42,6 +42,7 @@ import CompaniesManager from "./pages/admin/CompaniesManager";
 import CompanyBrandingEdit from "./pages/admin/CompanyBrandingEdit";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Settings from "./pages/Settings";
+import PersonalSettings from "./pages/PersonalSettings";
 
 // Etapas principais
 import Step1Authority from "./pages/Step1Authority";
@@ -122,108 +123,109 @@ const App = () => (
               <Toaster />
               <Sonner />
               <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/users" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
-          <Route path="/admin/users/edit/:userId" element={<ProtectedRoute><EditUserProfile /></ProtectedRoute>} />
-          <Route path="/admin/companies" element={<ProtectedRoute><CompaniesManager /></ProtectedRoute>} />
-          <Route path="/admin/company-branding/:companyId" element={<ProtectedRoute><CompanyBrandingEdit /></ProtectedRoute>} />
-          
-          {/* Settings Routes */}
-          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/settings/branding" element={<ProtectedRoute><BrandingSettings /></ProtectedRoute>} />
-          <Route path="/branding" element={<ProtectedRoute><BrandingSettings /></ProtectedRoute>} /> {/* Alias for backward compatibility */}
-          <Route path="/meeting-selection" element={<ProtectedRoute><MeetingSelection /></ProtectedRoute>} />
-          <Route path="/meeting2-selection" element={<ProtectedRoute><Meeting2Selection /></ProtectedRoute>} />
-          <Route path="/meeting2" element={<ProtectedRoute><Meeting2 /></ProtectedRoute>} />
-          <Route path="/meeting2/steps" element={<ProtectedRoute><Meeting2Steps /></ProtectedRoute>} />
-          <Route path="/meeting2/consultoria" element={<ProtectedRoute><Meeting2Consultoria /></ProtectedRoute>} />
-          <Route path="/meeting2/contract" element={<ProtectedRoute><Meeting2Contract /></ProtectedRoute>} />
-          <Route path="/meeting2/consortium-selection" element={<ProtectedRoute><Meeting2ConsortiumSelection /></ProtectedRoute>} />
-          <Route path="/meeting2/chosen-administrator" element={<ProtectedRoute><Meeting2ChosenAdministrator /></ProtectedRoute>} />
-          <Route path="/meeting2/security" element={<ProtectedRoute><Meeting2Security /></ProtectedRoute>} />
-          <Route path="/meeting2/pricing-options" element={<ProtectedRoute><Meeting2PricingOptions /></ProtectedRoute>} />
-          <Route path="/meeting2/commitments" element={<ProtectedRoute><Meeting2Commitments /></ProtectedRoute>} />
-          <Route path="/meeting2/contract-form" element={<ProtectedRoute><Meeting2ContractForm /></ProtectedRoute>} />
-          <Route path="/meeting2/hibrida/form" element={<ProtectedRoute><Meeting2Form /></ProtectedRoute>} />
-          <Route path="/meeting2/hibrida" element={<ProtectedRoute><Meeting2Hibrida /></ProtectedRoute>} />
-          <Route path="/meeting2/hibrida/steps" element={<ProtectedRoute><Meeting2HibridaSteps /></ProtectedRoute>} />
-          
-          <Route path="/meeting2/hibrida/ferramentas" element={<ProtectedRoute><Meeting2HibridaFerramentas /></ProtectedRoute>} />
-          <Route path="/meeting2/hibrida/conclusao" element={<ProtectedRoute><Meeting2HibridaConclusao /></ProtectedRoute>} />
-          
-          {/* Etapas principais */}
-          <Route path="/step1-authority" element={<ProtectedRoute><Step1Authority /></ProtectedRoute>} />
-          <Route path="/step2-presence" element={<ProtectedRoute><Step2Presence /></ProtectedRoute>} />
-          <Route path="/step3-media" element={<ProtectedRoute><Step3Media /></ProtectedRoute>} />
-          <Route path="/step4-what-we-do" element={<ProtectedRoute><Step4WhatWeDo /></ProtectedRoute>} />
-          <Route path="/step5-method" element={<ProtectedRoute><Step5Method /></ProtectedRoute>} />
-          <Route path="/step6-investment-options" element={<ProtectedRoute><Step6InvestmentOptions /></ProtectedRoute>} />
-          
-          {/* Caminho Renda Extra */}
-          <Route path="/renda-extra/step1" element={<ProtectedRoute><RendaExtraStep1 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step2" element={<ProtectedRoute><RendaExtraStep2 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step4" element={<ProtectedRoute><RendaExtraStep4 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step5" element={<ProtectedRoute><RendaExtraStep5 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step6" element={<ProtectedRoute><RendaExtraStep6 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step7" element={<ProtectedRoute><RendaExtraStep7 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step8" element={<ProtectedRoute><RendaExtraStep8 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step9" element={<ProtectedRoute><RendaExtraStep9 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step10" element={<ProtectedRoute><RendaExtraStep10 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step11" element={<ProtectedRoute><RendaExtraStep11 /></ProtectedRoute>} />
-          <Route path="/renda-extra/step12" element={<ProtectedRoute><RendaExtraStep12 /></ProtectedRoute>} />
-          
-          {/* Caminho Casa Própria */}
-          <Route path="/casa-propria/step1" element={<ProtectedRoute><CasaPropriaStep1 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step2" element={<ProtectedRoute><CasaPropriaStep2 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step4" element={<ProtectedRoute><CasaPropriaStep4 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step5" element={<ProtectedRoute><CasaPropriaStep5 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step6" element={<ProtectedRoute><CasaPropriaStep6 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step7" element={<ProtectedRoute><CasaPropriaStep7 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step8" element={<ProtectedRoute><CasaPropriaStep8 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step9" element={<ProtectedRoute><CasaPropriaStep9 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step10" element={<ProtectedRoute><CasaPropriaStep10 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step11" element={<ProtectedRoute><CasaPropriaStep11 /></ProtectedRoute>} />
-          <Route path="/casa-propria/step12" element={<ProtectedRoute><CasaPropriaStep12 /></ProtectedRoute>} />
-          
-          {/* Caminho Aposentadoria */}
-          <Route path="/aposentadoria/step1" element={<ProtectedRoute><AposentadoriaStep1 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step2" element={<ProtectedRoute><AposentadoriaStep2 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step3" element={<ProtectedRoute><AposentadoriaStep3 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step4" element={<ProtectedRoute><AposentadoriaStep4 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step5" element={<ProtectedRoute><AposentadoriaStep5 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step6" element={<ProtectedRoute><AposentadoriaStep6 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step7" element={<ProtectedRoute><AposentadoriaStep7 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step8" element={<ProtectedRoute><AposentadoriaStep8 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step9" element={<ProtectedRoute><AposentadoriaStep9 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step10" element={<ProtectedRoute><AposentadoriaStep10 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step11" element={<ProtectedRoute><AposentadoriaStep11 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step12" element={<ProtectedRoute><AposentadoriaStep12 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step13" element={<ProtectedRoute><AposentadoriaStep13 /></ProtectedRoute>} />
-          <Route path="/aposentadoria/step14" element={<ProtectedRoute><AposentadoriaStep14 /></ProtectedRoute>} />
-          
-          {/* Ferramentas */}
-          <Route path="/ferramentas" element={<ProtectedRoute><Ferramentas /></ProtectedRoute>} />
-          <Route path="/calculadora-inteligente" element={<ProtectedRoute><CalculadoraInteligente /></ProtectedRoute>} />
-          <Route path="/mapa-apresentacao" element={<ProtectedRoute><MapaApresentacao /></ProtectedRoute>} />
-          <Route path="/estudos-grupo" element={<ProtectedRoute><EstudosDeGrupo /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/novo" element={<ProtectedRoute><NovoGrupo /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/:id" element={<ProtectedRoute><DetalhesGrupo /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/:id/editar" element={<ProtectedRoute><EditarGrupo /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/:id/nova-analise" element={<ProtectedRoute><NovaAnalise /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/:grupoId/analise/:analiseId/editar" element={<ProtectedRoute><EditarAnalise /></ProtectedRoute>} />
-          <Route path="/estudos-grupo/comparativo" element={<ProtectedRoute><Comparativo /></ProtectedRoute>} />
-          <Route path="/ferramentas/administradoras" element={<ProtectedRoute><AdministradorasManager /></ProtectedRoute>} />
-          <Route path="/ferramentas/administradoras/:id/grupos" element={<ProtectedRoute><AdministradoraDetalhes /></ProtectedRoute>} />
-          <Route path="/ferramentas/simulador-contemplacao" element={<ProtectedRoute><SimuladorContemplacao /></ProtectedRoute>} />
-          
-          {/* Catch-all route */}
-          <Route path="*" element={<NotFound />} />
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/pending-approval" element={<PendingApproval />} />
+
+                {/* Admin Routes */}
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute><UserApprovals /></ProtectedRoute>} />
+                <Route path="/admin/users/edit/:userId" element={<ProtectedRoute><EditUserProfile /></ProtectedRoute>} />
+                <Route path="/admin/companies" element={<ProtectedRoute><CompaniesManager /></ProtectedRoute>} />
+                <Route path="/admin/company-branding/:companyId" element={<ProtectedRoute><CompanyBrandingEdit /></ProtectedRoute>} />
+
+                {/* Settings Routes */}
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/settings/personal" element={<ProtectedRoute><PersonalSettings /></ProtectedRoute>} />
+                <Route path="/settings/branding" element={<ProtectedRoute><BrandingSettings /></ProtectedRoute>} />
+                <Route path="/branding" element={<ProtectedRoute><BrandingSettings /></ProtectedRoute>} /> {/* Alias for backward compatibility */}
+                <Route path="/meeting-selection" element={<ProtectedRoute><MeetingSelection /></ProtectedRoute>} />
+                <Route path="/meeting2-selection" element={<ProtectedRoute><Meeting2Selection /></ProtectedRoute>} />
+                <Route path="/meeting2" element={<ProtectedRoute><Meeting2 /></ProtectedRoute>} />
+                <Route path="/meeting2/steps" element={<ProtectedRoute><Meeting2Steps /></ProtectedRoute>} />
+                <Route path="/meeting2/consultoria" element={<ProtectedRoute><Meeting2Consultoria /></ProtectedRoute>} />
+                <Route path="/meeting2/contract" element={<ProtectedRoute><Meeting2Contract /></ProtectedRoute>} />
+                <Route path="/meeting2/consortium-selection" element={<ProtectedRoute><Meeting2ConsortiumSelection /></ProtectedRoute>} />
+                <Route path="/meeting2/chosen-administrator" element={<ProtectedRoute><Meeting2ChosenAdministrator /></ProtectedRoute>} />
+                <Route path="/meeting2/security" element={<ProtectedRoute><Meeting2Security /></ProtectedRoute>} />
+                <Route path="/meeting2/pricing-options" element={<ProtectedRoute><Meeting2PricingOptions /></ProtectedRoute>} />
+                <Route path="/meeting2/commitments" element={<ProtectedRoute><Meeting2Commitments /></ProtectedRoute>} />
+                <Route path="/meeting2/contract-form" element={<ProtectedRoute><Meeting2ContractForm /></ProtectedRoute>} />
+                <Route path="/meeting2/hibrida/form" element={<ProtectedRoute><Meeting2Form /></ProtectedRoute>} />
+                <Route path="/meeting2/hibrida" element={<ProtectedRoute><Meeting2Hibrida /></ProtectedRoute>} />
+                <Route path="/meeting2/hibrida/steps" element={<ProtectedRoute><Meeting2HibridaSteps /></ProtectedRoute>} />
+
+                <Route path="/meeting2/hibrida/ferramentas" element={<ProtectedRoute><Meeting2HibridaFerramentas /></ProtectedRoute>} />
+                <Route path="/meeting2/hibrida/conclusao" element={<ProtectedRoute><Meeting2HibridaConclusao /></ProtectedRoute>} />
+
+                {/* Etapas principais */}
+                <Route path="/step1-authority" element={<ProtectedRoute><Step1Authority /></ProtectedRoute>} />
+                <Route path="/step2-presence" element={<ProtectedRoute><Step2Presence /></ProtectedRoute>} />
+                <Route path="/step3-media" element={<ProtectedRoute><Step3Media /></ProtectedRoute>} />
+                <Route path="/step4-what-we-do" element={<ProtectedRoute><Step4WhatWeDo /></ProtectedRoute>} />
+                <Route path="/step5-method" element={<ProtectedRoute><Step5Method /></ProtectedRoute>} />
+                <Route path="/step6-investment-options" element={<ProtectedRoute><Step6InvestmentOptions /></ProtectedRoute>} />
+
+                {/* Caminho Renda Extra */}
+                <Route path="/renda-extra/step1" element={<ProtectedRoute><RendaExtraStep1 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step2" element={<ProtectedRoute><RendaExtraStep2 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step4" element={<ProtectedRoute><RendaExtraStep4 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step5" element={<ProtectedRoute><RendaExtraStep5 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step6" element={<ProtectedRoute><RendaExtraStep6 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step7" element={<ProtectedRoute><RendaExtraStep7 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step8" element={<ProtectedRoute><RendaExtraStep8 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step9" element={<ProtectedRoute><RendaExtraStep9 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step10" element={<ProtectedRoute><RendaExtraStep10 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step11" element={<ProtectedRoute><RendaExtraStep11 /></ProtectedRoute>} />
+                <Route path="/renda-extra/step12" element={<ProtectedRoute><RendaExtraStep12 /></ProtectedRoute>} />
+
+                {/* Caminho Casa Própria */}
+                <Route path="/casa-propria/step1" element={<ProtectedRoute><CasaPropriaStep1 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step2" element={<ProtectedRoute><CasaPropriaStep2 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step4" element={<ProtectedRoute><CasaPropriaStep4 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step5" element={<ProtectedRoute><CasaPropriaStep5 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step6" element={<ProtectedRoute><CasaPropriaStep6 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step7" element={<ProtectedRoute><CasaPropriaStep7 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step8" element={<ProtectedRoute><CasaPropriaStep8 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step9" element={<ProtectedRoute><CasaPropriaStep9 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step10" element={<ProtectedRoute><CasaPropriaStep10 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step11" element={<ProtectedRoute><CasaPropriaStep11 /></ProtectedRoute>} />
+                <Route path="/casa-propria/step12" element={<ProtectedRoute><CasaPropriaStep12 /></ProtectedRoute>} />
+
+                {/* Caminho Aposentadoria */}
+                <Route path="/aposentadoria/step1" element={<ProtectedRoute><AposentadoriaStep1 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step2" element={<ProtectedRoute><AposentadoriaStep2 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step3" element={<ProtectedRoute><AposentadoriaStep3 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step4" element={<ProtectedRoute><AposentadoriaStep4 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step5" element={<ProtectedRoute><AposentadoriaStep5 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step6" element={<ProtectedRoute><AposentadoriaStep6 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step7" element={<ProtectedRoute><AposentadoriaStep7 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step8" element={<ProtectedRoute><AposentadoriaStep8 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step9" element={<ProtectedRoute><AposentadoriaStep9 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step10" element={<ProtectedRoute><AposentadoriaStep10 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step11" element={<ProtectedRoute><AposentadoriaStep11 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step12" element={<ProtectedRoute><AposentadoriaStep12 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step13" element={<ProtectedRoute><AposentadoriaStep13 /></ProtectedRoute>} />
+                <Route path="/aposentadoria/step14" element={<ProtectedRoute><AposentadoriaStep14 /></ProtectedRoute>} />
+
+                {/* Ferramentas */}
+                <Route path="/ferramentas" element={<ProtectedRoute><Ferramentas /></ProtectedRoute>} />
+                <Route path="/calculadora-inteligente" element={<ProtectedRoute><CalculadoraInteligente /></ProtectedRoute>} />
+                <Route path="/mapa-apresentacao" element={<ProtectedRoute><MapaApresentacao /></ProtectedRoute>} />
+                <Route path="/estudos-grupo" element={<ProtectedRoute><EstudosDeGrupo /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/novo" element={<ProtectedRoute><NovoGrupo /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/:id" element={<ProtectedRoute><DetalhesGrupo /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/:id/editar" element={<ProtectedRoute><EditarGrupo /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/:id/nova-analise" element={<ProtectedRoute><NovaAnalise /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/:grupoId/analise/:analiseId/editar" element={<ProtectedRoute><EditarAnalise /></ProtectedRoute>} />
+                <Route path="/estudos-grupo/comparativo" element={<ProtectedRoute><Comparativo /></ProtectedRoute>} />
+                <Route path="/ferramentas/administradoras" element={<ProtectedRoute><AdministradorasManager /></ProtectedRoute>} />
+                <Route path="/ferramentas/administradoras/:id/grupos" element={<ProtectedRoute><AdministradoraDetalhes /></ProtectedRoute>} />
+                <Route path="/ferramentas/simulador-contemplacao" element={<ProtectedRoute><SimuladorContemplacao /></ProtectedRoute>} />
+
+                {/* Catch-all route */}
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </TooltipProvider>
           </BrandingProvider>

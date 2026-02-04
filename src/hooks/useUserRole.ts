@@ -27,16 +27,13 @@ export const useUserRole = () => {
 
         if (error) {
           console.error('❌ useUserRole: Error in RPC:', error);
-          throw error;
+          // Don't throw here, let the email check handle it as a fallback
         }
 
-        // RPC retorna diretamente o enum app_role ou null
         const roleData = data ? { role: data } : null;
         const adminEmails = [
           'contato@autoridadeinvestimentos.com.br',
-          'admin@admin.com',
-          'andreilepsch@gmail.com',
-          'andrei.lepsch@gmail.com'
+          'admin@admin.com'
         ].map(e => e.toLowerCase());
 
         const userEmail = user.email?.toLowerCase();
@@ -52,7 +49,15 @@ export const useUserRole = () => {
         setIsAdmin(isAdminUser);
       } catch (error) {
         console.error('❌ useUserRole: Error checking user role:', error);
-        setIsAdmin(false);
+
+        // Fallback to email check even if RPC fails
+        const adminEmails = [
+          'contato@autoridadeinvestimentos.com.br',
+          'admin@admin.com'
+        ].map(e => e.toLowerCase());
+
+        const userEmail = user?.email?.toLowerCase();
+        setIsAdmin(!!(userEmail && adminEmails.includes(userEmail)));
       } finally {
         setIsLoading(false);
       }

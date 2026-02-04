@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, RefreshCw, ArrowLeft, Mail, Calendar, Edit, Building, Loader2, UserX, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, RefreshCw, ArrowLeft, Mail, Calendar, Edit, Building, Loader2, UserX, Filter, RotateCcw } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +43,8 @@ interface PendingUser {
   requested_at: string;
   email?: string;
   full_name?: string;
+  company_name?: string;
+  created_at?: string;
 }
 
 interface ActiveUser {
@@ -56,6 +60,7 @@ interface ActiveUser {
 
 const UserApprovals = () => {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
   const { isAdmin, isLoading: roleLoading } = useUserRole();
   const { toast } = useToast();
   const [users, setUsers] = useState<PendingUser[]>([]);
@@ -64,7 +69,7 @@ const UserApprovals = () => {
   const [loadingActive, setLoadingActive] = useState(false);
   const [selectedUser, setSelectedUser] = useState<PendingUser | null>(null);
   const [selectedRole, setSelectedRole] = useState<'partner' | 'admin'>('partner');
-  const [selectedCompany, setSelectedCompany] = useState<string>('');
+  const [companyName, setCompanyName] = useState('');
   const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
   const [rejectReason, setRejectReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -79,41 +84,70 @@ const UserApprovals = () => {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    const isMainAdmin = user?.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
+    if (!roleLoading && !isAdmin && !isMainAdmin) {
+      console.log('🚫 UserApprovals: Not an admin, redirecting to home');
       navigate('/');
     }
-  }, [isAdmin, roleLoading, navigate]);
+  }, [isAdmin, user, roleLoading, navigate]);
 
   const fetchPendingUsers = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      console.log('🔍 UserApprovals: Fetching pending users...');
 
-      if (!session) {
-        throw new Error('No active session');
+      // Attempt to fetch via RPC to get company_name from metadata
+      const { data, error } = await supabase.rpc('get_pending_users_data');
+
+      if (error) {
+        console.warn("RPC get_pending_users_data failed, falling back to basic query.", error);
+        // Fallback to basic query if RPC fails (e.g. migration not run)
+        throw error;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-pending-users`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch pending users');
-      }
-
-      const data = await response.json();
-      setUsers(data);
+      setUsers(data as PendingUser[]);
     } catch (error) {
-      console.error('Error fetching pending users:', error);
-      toast({
-        title: 'Erro ao carregar usuários',
-        description: 'Não foi possível carregar a lista de usuários pendentes.',
-        variant: 'destructive',
-      });
+      console.error('Error fetching pending users via RPC, falling back to standard query:', error);
+
+      // Fallback implementation
+      try {
+        const { data, error: fallbackError } = await supabase
+          .from('user_account_status')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        if (fallbackError) throw fallbackError;
+
+        const userIds = data?.map(u => u.user_id) || [];
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        const formattedData = (data || []).map(item => {
+          const profile = profiles?.find(p => p.id === item.user_id);
+          return {
+            ...item,
+            email: profile?.email || 'N/A',
+            full_name: profile?.full_name || 'Sem nome',
+            company_name: undefined // Explicitly undefined so UI allows input
+          };
+        });
+        setUsers(formattedData as PendingUser[]);
+
+        toast({
+          title: 'Aviso',
+          description: 'Não foi possível carregar os nomes das empresas automaticamente. Digite manualmente.',
+          variant: 'default', // Not destructive, just a warning
+        });
+      } catch (finalError) {
+        toast({
+          title: 'Erro ao carregar usuários',
+          description: 'Não foi possível carregar a lista de usuários pendentes.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -122,33 +156,53 @@ const UserApprovals = () => {
   const fetchActiveUsers = async () => {
     setLoadingActive(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: statuses, error: statusError } = await supabase
+        .from('user_account_status')
+        .select('*')
+        .eq('status', 'approved')
+        .order('approved_at', { ascending: false });
 
-      if (!session) {
-        throw new Error('No active session');
-      }
+      if (statusError) throw statusError;
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-active-users`, {
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-          'Content-Type': 'application/json'
-        }
+      const userIds = statuses?.map(s => s.user_id) || [];
+
+      // Buscar perifis e roles
+      const [profilesResult, rolesResult, userCompaniesResult] = await Promise.all([
+        supabase.from('profiles').select('id, email, full_name').in('id', userIds),
+        supabase.from('user_roles').select('user_id, role').in('user_id', userIds),
+        supabase.from('user_companies').select('user_id, company_id').in('user_id', userIds)
+      ]);
+
+      // Buscar nomes das empresas separadamente para evitar problemas de JOIN
+      const companyIds = userCompaniesResult.data?.map(uc => uc.company_id).filter(Boolean) || [];
+      const { data: companiesData } = await supabase
+        .from('companies')
+        .select('id, company_name')
+        .in('id', companyIds as string[]);
+
+      const formattedActive = (statuses || []).map(status => {
+        const profile = profilesResult.data?.find(p => p.id === status.user_id);
+        const role = rolesResult.data?.find(r => r.user_id === status.user_id)?.role || 'partner';
+
+        const userCompany = userCompaniesResult.data?.find(c => c.user_id === status.user_id);
+        const company = companiesData?.find(c => c.id === userCompany?.company_id);
+        const companyName = company?.company_name || 'N/A';
+
+        return {
+          id: status.user_id,
+          user_id: status.user_id,
+          email: profile?.email || 'N/A',
+          full_name: profile?.full_name || 'Sem nome',
+          role: role,
+          company_name: companyName,
+          approved_at: status.approved_at,
+          is_active: status.is_active
+        };
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch active users');
-      }
-
-      const data = await response.json();
-      setActiveUsers(data);
+      setActiveUsers(formattedActive);
     } catch (error) {
       console.error('Error fetching active users:', error);
-      toast({
-        title: 'Erro ao carregar usuários ativos',
-        description: 'Não foi possível carregar a lista de usuários ativos.',
-        variant: 'destructive',
-      });
     } finally {
       setLoadingActive(false);
     }
@@ -186,15 +240,15 @@ const UserApprovals = () => {
   const handleOpenApproveDialog = (user: PendingUser) => {
     setSelectedUser(user);
     setSelectedRole('partner');
-    setSelectedCompany('');
+    setCompanyName(user.company_name || '');
     setShowApproveDialog(true);
   };
 
   const handleApprove = async () => {
-    if (!selectedUser || !selectedCompany) {
+    if (!selectedUser || !companyName.trim()) {
       toast({
         title: 'Erro',
-        description: 'Por favor, selecione uma empresa.',
+        description: 'Por favor, informe o nome da empresa.',
         variant: 'destructive',
       });
       return;
@@ -202,10 +256,10 @@ const UserApprovals = () => {
 
     setIsApproving(true);
     try {
-      const { error } = await supabase.rpc('approve_user', {
+      const { error } = await supabase.rpc('approve_user_with_company', {
         _user_id: selectedUser.user_id,
+        _company_name: companyName.trim(),
         _role: selectedRole,
-        _company_id: selectedCompany,
       });
 
       if (error) throw error;
@@ -221,12 +275,12 @@ const UserApprovals = () => {
       fetchActiveUsers();
       setShowApproveDialog(false);
       setSelectedUser(null);
-      setSelectedCompany('');
+      setCompanyName('');
     } catch (error) {
       console.error('Error approving user:', error);
       toast({
         title: 'Erro ao aprovar usuário',
-        description: 'Não foi possível aprovar o usuário. Tente novamente.',
+        description: (error as any).message || (error as any).error_description || JSON.stringify(error),
         variant: 'destructive',
       });
     } finally {
@@ -298,7 +352,34 @@ const UserApprovals = () => {
     }
   };
 
-  if (roleLoading || !isAdmin) {
+  const handleResetToPending = async (user: ActiveUser) => {
+    try {
+      const { error } = await supabase.rpc('reset_user_to_pending', {
+        _user_id: user.user_id
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Usuário resetado',
+        description: 'O usuário voltou para a lista de pendentes.',
+      });
+
+      fetchPendingUsers();
+      fetchActiveUsers();
+    } catch (error) {
+      console.error('Error resetting user:', error);
+      toast({
+        title: 'Erro ao resetar usuário',
+        description: (error as any).message || 'Não foi possível resetar o usuário.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const isMainAdmin = user?.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
+
+  if (roleLoading || (!isAdmin && !isMainAdmin)) {
     return null;
   }
 
@@ -378,6 +459,12 @@ const UserApprovals = () => {
                           <Mail className="w-4 h-4 text-[#C9A45C]" />
                           {user.email}
                         </div>
+                        {user.company_name && (
+                          <div className="flex items-center gap-2 text-white/60 text-xs mt-1">
+                            <Building className="w-3 h-3 text-[#C9A45C]" />
+                            {user.company_name}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-sm text-white/70">
@@ -591,6 +678,15 @@ const UserApprovals = () => {
                             </Button>
                             <Button
                               size="sm"
+                              variant="secondary"
+                              onClick={() => handleResetToPending(user)}
+                              title="Voltar para pendente (reaprovar)"
+                              className="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600/40 hover:text-yellow-400 border border-yellow-600/30"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => {
                                 setUserToDelete({ id: user.user_id, email: user.email });
@@ -623,19 +719,19 @@ const UserApprovals = () => {
           </AlertDialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label className="text-white/90">Empresa</Label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                  <SelectValue placeholder="Selecione a empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableCompanies.map(company => (
-                    <SelectItem key={company.id} value={company.id}>
-                      {company.company_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-white/90">Empresa (Informada no Cadastro)</Label>
+              <div className="p-3 rounded-md bg-white/5 border border-white/10 text-white font-medium flex items-center gap-2">
+                <Building className="w-4 h-4 text-[#C9A45C]" />
+                {companyName || <span className="text-white/40 italic">Não informada ou erro ao carregar</span>}
+              </div>
+              {!companyName && (
+                <p className="text-xs text-yellow-500 mt-2">
+                  ⚠️ O nome da empresa é obrigatório. Se estiver vazio, verifique se a função RPC 'get_pending_users_data' foi criada no banco de dados.
+                </p>
+              )}
+              <p className="text-xs text-white/60">
+                Este campo é informativo e não pode ser alterado.
+              </p>
             </div>
             <div className="space-y-2">
               <Label className="text-white/90">Perfil</Label>
@@ -653,13 +749,13 @@ const UserApprovals = () => {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => {
               setShowApproveDialog(false);
-              setSelectedCompany('');
+              setCompanyName('');
             }} className="text-white border-white/20">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleApprove}
-              disabled={!selectedCompany || isApproving}
+              disabled={!companyName.trim() || isApproving}
               className="bg-[#C9A45C] hover:bg-[#B78D4A] text-white"
             >
               {isApproving ? (
