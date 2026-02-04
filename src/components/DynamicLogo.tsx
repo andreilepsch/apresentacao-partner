@@ -34,18 +34,13 @@ const DynamicLogo: React.FC<DynamicLogoProps> = ({
       return branding.logoNegativeUrl;
     }
 
-    // 2. Prioridade: Logo Principal Customizada (exceto em AUTHENTICATION)
-    if (pageContext !== PageContext.AUTHENTICATION && branding.logoUrl) {
+    // 2. Prioridade: Logo Principal Customizada
+    if (branding.logoUrl) {
       return branding.logoUrl;
     }
 
-    // 3. Fallback: Logos Padrão do Sistema
-    switch (variant) {
-      case 'dark': return '/lovable-uploads/logo-partner-white-text.png';
-      case 'light': return '/lovable-uploads/logo-partner-black-text.png';
-      case 'icon-only': return '/lovable-uploads/logo-partner-gold.png';
-      default: return '/lovable-uploads/logo-partner-black-text.png';
-    }
+    // 3. Fallback: No Default Logo
+    return '';
   };
 
   // Atualizar logo quando branding, pageContext ou variant mudarem
@@ -61,6 +56,10 @@ const DynamicLogo: React.FC<DynamicLogoProps> = ({
     });
     setLogoSrc(newSrc);
   }, [branding.logoUrl, branding.logoNegativeUrl, isLoading, variant, pageContext]);
+
+  if (!logoSrc && !isLoading) {
+    return null;
+  }
 
   return (
     <div className={`flex items-center ${className}`}>

@@ -3,17 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { usePreviewNavigation } from "@/hooks/usePreviewNavigation";
 import { useBranding } from "@/contexts/BrandingContext";
-import { Award } from "lucide-react";
+import { Award, Loader2 } from "lucide-react";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import PageBadge from "@/components/common/PageBadge";
 import SectionDivider from "@/components/common/SectionDivider";
 import PageNavigation from "@/components/common/PageNavigation";
 import OptimizedNewsCarousel from "@/components/media/OptimizedNewsCarousel";
 import DynamicAuthorityQuote from "@/components/DynamicAuthorityQuote";
-
 import { PageContext } from "@/types/pageContext";
-
-// ... existing imports
 
 const Step3Media = () => {
   const { navigateWithPreview } = usePreviewNavigation();
@@ -24,23 +21,30 @@ const Step3Media = () => {
 
   useEffect(() => {
     const init = async () => {
-      // 1. Forçar contexto de apresentação (para atualizações futuras)
-      setPageContext(PageContext.PRESENTATION);
+      try {
+        // 1. Forçar contexto de apresentação
+        setPageContext(PageContext.PRESENTATION);
 
-      // 2. Buscar dados JÁ com o contexto correto forçado
-      // Isso ignora o estado atual 'pageContext' (que pode estar atrasado) e usa o que passamos
-      await refetchBranding(PageContext.PRESENTATION);
-
-      // 3. Liberar renderização
-      setIsReady(true);
+        // 2. Buscar dados JÁ com o contexto correto forçado
+        await refetchBranding(PageContext.PRESENTATION);
+      } catch (error) {
+        console.error("Erro ao inicializar Step3Media:", error);
+      } finally {
+        // 3. Liberar renderização sempre, mesmo com erro
+        setIsReady(true);
+      }
     };
 
     init();
   }, []);
 
-  // Bloqueio total até que nossa inicialização termine
+  // Bloqueio com visual de loading
   if (!isReady || isLoading) {
-    return <div className="min-h-screen bg-white" />;
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#C9A45C] animate-spin" />
+      </div>
+    );
   }
 
   return (

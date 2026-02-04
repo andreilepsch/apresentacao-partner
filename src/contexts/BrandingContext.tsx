@@ -71,7 +71,7 @@ const defaultBranding: BrandingData = {
   secondaryColor: '#c9a45c',
   accentColor: '#e8f5e8',
   companyTagline: 'Transformando patrimônio em renda através de investimentos imobiliários inteligentes',
-  teamPhotoUrl: null,
+  teamPhotoUrl: '/images/default-team-photo.jpg',
   partnerPhotoUrl: null,
   metricsJson: [
     { value: "R$ 2.4Bi", label: "Em créditos gerenciados" },

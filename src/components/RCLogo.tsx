@@ -25,10 +25,10 @@ interface RCLogoProps {
   className?: string;
 }
 
-const RCLogo: React.FC<RCLogoProps> = ({ 
-  variant = 'primary', 
+const RCLogo: React.FC<RCLogoProps> = ({
+  variant = 'primary',
   size = 'md',
-  className = '' 
+  className = ''
 }) => {
   const { branding, isLoading, pageContext } = useBranding();
   const [logoSrc, setLogoSrc] = useState<string>('');
@@ -40,39 +40,14 @@ const RCLogo: React.FC<RCLogoProps> = ({
   };
 
   const getLogoSrc = () => {
-    // AUTHENTICATION/NAVIGATION: SEMPRE usar logo padrão
-    if (pageContext === PageContext.AUTHENTICATION || pageContext === PageContext.NAVIGATION) {
-      console.log('🎨 RCLogo: Using default logo for', pageContext);
-      if (variant === 'secondary') {
-        return '/lovable-uploads/logo-partner-white-text.png';
-      }
-      return '/lovable-uploads/logo-partner-black-text.png';
+    // Priorizar logo customizada se existir
+    if (branding.logoUrl) {
+      console.log('🎨 RCLogo: Using custom logo:', branding.logoUrl);
+      return branding.logoUrl;
     }
-    
-    // PRESENTATION: Usar logo customizada se disponível
-    if (pageContext === PageContext.PRESENTATION) {
-      // Se ainda está carregando, usar default temporário
-      if (isLoading) {
-        console.log('🎨 RCLogo: Loading, using temporary default');
-        if (variant === 'secondary') {
-          return '/lovable-uploads/logo-partner-white-text.png';
-        }
-        return '/lovable-uploads/logo-partner-black-text.png';
-      }
-      
-      // Priorizar logo customizada se existir
-      if (branding.logoUrl) {
-        console.log('🎨 RCLogo: Using custom logo:', branding.logoUrl);
-        return branding.logoUrl;
-      }
-    }
-    
-    // Fallback para logo default baseada na variant
-    console.log('🎨 RCLogo: Using default logo for variant:', variant);
-    if (variant === 'secondary') {
-      return '/lovable-uploads/logo-partner-white-text.png';
-    }
-    return '/lovable-uploads/logo-partner-black-text.png';
+
+    // Fallback: Sem logo padrão
+    return '';
   };
 
   // Atualizar logo quando branding, pageContext ou variant mudarem
@@ -88,9 +63,13 @@ const RCLogo: React.FC<RCLogoProps> = ({
     setLogoSrc(newSrc);
   }, [branding.logoUrl, isLoading, variant, pageContext]);
 
+  if (!logoSrc) {
+    return null;
+  }
+
   return (
     <div className={`flex items-center ${className}`}>
-      <img 
+      <img
         key={logoSrc}
         src={logoSrc}
         alt={branding.companyName}
