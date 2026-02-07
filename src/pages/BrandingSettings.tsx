@@ -111,6 +111,27 @@ const BrandingSettings = () => {
     setFormData({ ...formData, mediaJson: newMedia });
   };
 
+  const addMediaCard = () => {
+    const newCard: MediaCard = {
+      id: crypto.randomUUID(),
+      outletName: '',
+      headerColor: '#000000',
+      headerTextColor: '#FFFFFF',
+      title: '',
+      description: '',
+      imageUrl: ''
+    };
+    setFormData({
+      ...formData,
+      mediaJson: [...formData.mediaJson, newCard]
+    });
+  };
+
+  const removeMediaCard = (index: number) => {
+    const newMedia = formData.mediaJson.filter((_, i) => i !== index);
+    setFormData({ ...formData, mediaJson: newMedia });
+  };
+
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -445,6 +466,14 @@ const BrandingSettings = () => {
                               <div key={card.id || index} className="p-4 border rounded-lg space-y-4 bg-accent/5">
                                 <div className="flex items-center justify-between">
                                   <h4 className="font-semibold text-base">Card {index + 1}</h4>
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => removeMediaCard(index)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -522,6 +551,15 @@ const BrandingSettings = () => {
                                 </div>
                               </div>
                             ))}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={addMediaCard}
+                              className="w-full mt-4"
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Adicionar Notícia na Mídia
+                            </Button>
                           </div>
                         </div>
                       </div>
