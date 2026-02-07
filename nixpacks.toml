@@ -1,7 +1,7 @@
 providers = ["node"]
 
 [phases.setup]
-nixPkgs = ["nodejs_22"]
+nixPkgs = ["nodejs_22", "nginx"]
 
 [phases.install]
 cmds = ["npm install"]
@@ -10,4 +10,4 @@ cmds = ["npm install"]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm run preview"
+cmd = "nginx -c /app/nginx.conf -g 'daemon off;'"
