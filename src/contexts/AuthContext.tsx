@@ -1,110 +1,95 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { useUser, useAuth, useClerk } from '@clerk/clerk-react';
+import { authApi, UserProfile } from '@/lib/api';
 import { clearAppData } from '@/utils/clearAppData';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  // Clerk user ID (substitui o UUID do Supabase)
+  clerkUserId: string | null;
+  // Dados do usuário do nosso banco
+  userProfile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signOut: () => Promise<{ error: any }>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
+  isAdmin: boolean;
+  isApproved: boolean;
+  signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const { user, isLoaded: isUserLoaded } = useUser();
+  const { isSignedIn } = useAuth();
+  const { signOut: clerkSignOut } = useClerk();
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('🔐 AuthContext: onAuthStateChange ->', { 
-          event, 
-          userId: session?.user?.id,
-          userEmail: session?.user?.email 
-        });
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-        
-        if (!session) {
-          clearAppData();
-        }
-      }
-    );
+  const clerkUserId = user?.id || null;
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('🔐 AuthContext: getSession ->', { 
-        userId: session?.user?.id,
-        userEmail: session?.user?.email 
-      });
-      setSession(session);
-      setUser(session?.user ?? null);
+  const syncAndLoadProfile = async () => {
+    if (!user || !clerkUserId) {
+      setUserProfile(null);
       setLoading(false);
-    });
+      return;
+    }
 
-    return () => subscription.unsubscribe();
-  }, []);
+    try {
+      // Sincronizar usuário com o banco (cria perfil se não existir)
+      await authApi.sync(
+        clerkUserId,
+        user.primaryEmailAddress?.emailAddress || '',
+        user.fullName || ''
+      );
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
-        }
-      }
-    });
-    
-    return { error };
+      // Carregar perfil completo
+      const { user: profile } = await authApi.me(clerkUserId);
+      setUserProfile(profile);
+    } catch (err) {
+      console.error('Erro ao sincronizar perfil:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    
-    return { error };
-  };
+  useEffect(() => {
+    if (!isUserLoaded) return;
+
+    if (!isSignedIn) {
+      clearAppData();
+      setUserProfile(null);
+      setLoading(false);
+      return;
+    }
+
+    syncAndLoadProfile();
+  }, [isUserLoaded, isSignedIn, user?.id]);
 
   const signOut = async () => {
     clearAppData();
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    setUserProfile(null);
+    await clerkSignOut();
   };
 
-  const resetPassword = async (email: string) => {
-    const redirectUrl = `${window.location.protocol}//${window.location.host}/reset-password`;
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
-    
-    return { error };
+  const refreshProfile = async () => {
+    if (clerkUserId) {
+      const { user: profile } = await authApi.me(clerkUserId);
+      setUserProfile(profile);
+    }
   };
+
+  const isAdmin = userProfile?.role === 'admin';
+  const isApproved = userProfile?.is_active === true;
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        loading,
-        signUp,
-        signIn,
-        signOut,
-        resetPassword,
-      }}
-    >
+    <AuthContext.Provider value={{
+      clerkUserId,
+      userProfile,
+      loading,
+      isAdmin,
+      isApproved,
+      signOut,
+      refreshProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );
