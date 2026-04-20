@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthContext } from "@/contexts/AuthContext";
-import { useUserRole } from "@/hooks/useUserRole";
 import { useBranding } from "@/contexts/BrandingContext";
 import { PageContext } from "@/types/pageContext";
 import { usePreviewNavigation } from "@/hooks/usePreviewNavigation";
@@ -12,13 +11,9 @@ import { Calendar, Users, LogOut, Settings } from "lucide-react";
 
 const MeetingSelection = () => {
   const { navigateWithPreview } = usePreviewNavigation();
-  const { user, signOut } = useAuthContext();
-  const { isAdmin: roleAdmin } = useUserRole();
+  const { userProfile, signOut, isAdmin, loading: authLoading } = useAuthContext();
   const { setPageContext, refetchBranding } = useBranding();
   const navigate = useNavigate();
-
-  // Forçar detecção de admin para o e-mail do usuário em caso de falha no hook
-  const isAdmin = roleAdmin || user?.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
 
   // Define pageContext ao montar o componente
   useEffect(() => {
@@ -27,13 +22,17 @@ const MeetingSelection = () => {
     refetchBranding(PageContext.NAVIGATION);
 
     console.log('🧭 MeetingSelection: PageContext set to NAVIGATION');
-    console.log('👑 MeetingSelection: isAdmin status ->', isAdmin, 'Email:', user?.email);
-  }, [isAdmin, user, setPageContext, refetchBranding]);
+    console.log('👑 MeetingSelection: isAdmin status ->', isAdmin);
+  }, [isAdmin, setPageContext, refetchBranding]);
 
   const handleLogout = async () => {
     await signOut();
     navigate("/auth");
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen bg-[#0F2838] flex items-center justify-center"><Loader2 className="animate-spin text-white" /></div>;
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-[#0F2838]">
@@ -83,7 +82,7 @@ const MeetingSelection = () => {
               <DynamicLogo size="lg" variant="dark" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight tracking-wide">
-              Bem-vindo, <span className="text-[#C9A45C] font-semibold">{user?.user_metadata?.full_name || user?.email}</span>
+              Bem-vindo, <span className="text-[#C9A45C] font-semibold">{userProfile?.full_name || userProfile?.email || 'Usuário'}</span>
             </h1>
             <p className="text-lg md:text-xl text-white/80 leading-relaxed">
               Selecione qual apresentação deseja acessar
@@ -165,8 +164,6 @@ const MeetingSelection = () => {
               </CardContent>
             </Card>
           </div>
-
-
         </div>
       </div>
 

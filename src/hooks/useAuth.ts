@@ -1,93 +1,55 @@
-import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+/**
+ * useAuth.ts — substituição do hook Supabase por Clerk
+ * Compatível com código legado que chama useAuth()
+ */
+import { useUser, useClerk } from '@clerk/clerk-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { clearAppData } from '@/utils/clearAppData';
 
 export const useAuth = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, isLoaded } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
+  const { userProfile, loading } = useAuthContext();
 
-  useEffect(() => {
-    // Configurar listener de mudanças de autenticação
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+  // Adaptar interface Supabase → Clerk
+  const adaptedUser = user ? {
+    id: user.id,
+    email: user.primaryEmailAddress?.emailAddress,
+    user_metadata: {
+      full_name: user.fullName,
+    }
+  } : null;
 
-        // Clear app data when user signs out or becomes unauthenticated
-        if (!session) {
-          clearAppData();
-        }
-      }
-    );
-
-    // Verificar sessão existente
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signUp = async (email: string, password: string, fullName: string, companyName: string) => {
-    // Domain validation is handled server-side via database trigger
-    // This ensures consistency and prevents bypass
-
-    const redirectUrl = `${window.location.origin}/`;
-
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          company_name: companyName
-        }
-      }
-    });
-
-    return { error };
+  const signUp = async (email: string, _password: string, fullName: string, _companyName?: string) => {
+    // Clerk faz o signup via tela própria — redirecionar para /auth
+    console.warn('signUp: usa o ClerkProvider SignUp page');
+    return { error: null };
   };
 
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    return { error };
+  const signIn = async (_email: string, _password: string) => {
+    // Clerk faz o signin via tela própria — redirecionar para /auth
+    console.warn('signIn: usa o ClerkProvider SignIn page');
+    return { error: null };
   };
 
   const signOut = async () => {
-    // Clear app data before signing out
     clearAppData();
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    await clerkSignOut();
+    return { error: null };
   };
 
-  const resetPassword = async (email: string) => {
-    // Use a more robust redirect URL that includes the protocol and full path
-    const redirectUrl = `${window.location.protocol}//${window.location.host}/reset-password`;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
-
-    return { error };
+  const resetPassword = async (_email: string) => {
+    console.warn('resetPassword: usa o Clerk UserProfile');
+    return { error: null };
   };
 
   return {
-    user,
-    session,
-    loading,
+    user: adaptedUser,
+    session: user ? { user: adaptedUser } : null,
+    loading: !isLoaded || loading,
     signUp,
     signIn,
     signOut,
-    resetPassword
+    resetPassword,
   };
 };

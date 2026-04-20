@@ -9,32 +9,25 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { user, loading: authLoading } = useAuthContext();
+  const { userProfile, clerkUserId, loading: authLoading, isAdmin } = useAuthContext();
   const { status, isActive, loading: statusLoading } = useAccountStatus();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    // Se não está mais carregando e não tem ID do Clerk, redireciona para login
+    if (!authLoading && !clerkUserId) {
       navigate('/auth');
     }
-  }, [user, authLoading, navigate]);
+  }, [clerkUserId, authLoading, navigate]);
 
   useEffect(() => {
-    if (!statusLoading && user) {
-      const isAdmin = user.email?.toLowerCase() === 'contato@autoridadeinvestimentos.com.br';
-
-      if (isAdmin) return; // Bypassa verificações de status para o admin principal
-
-      if (status === 'pending') {
-        navigate('/pending-approval');
-      } else if (status === 'rejected') {
-        navigate('/pending-approval');
-      } else if (status === 'approved' && !isActive) {
-        // Usuário aprovado mas inativo - bloquear acesso
+    // Se logado, verifica restrições de aprovação (exceto para admins)
+    if (!statusLoading && clerkUserId && !isAdmin) {
+      if (status === 'pending' || status === 'rejected' || !isActive) {
         navigate('/pending-approval');
       }
     }
-  }, [status, isActive, statusLoading, user, navigate]);
+  }, [status, isActive, statusLoading, clerkUserId, isAdmin, navigate]);
 
   if (authLoading || statusLoading) {
     return (
@@ -47,14 +40,12 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  // Permitir acesso se:
-  // 1. Usuário sem status (null) = admins antigos ou primeiro admin
-  // 2. Usuário aprovado E ativo
-  if (!user) {
+  // Se não tem usuário ou não está aprovado (e não é admin), não renderiza nada (o useEffect cuida do redirect)
+  if (!clerkUserId) {
     return null;
   }
 
-  if (status !== null && (status !== 'approved' || !isActive)) {
+  if (!isAdmin && (status === 'pending' || status === 'rejected' || !isActive)) {
     return null;
   }
 

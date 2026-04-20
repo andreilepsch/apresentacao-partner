@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { BrandingProvider } from "@/contexts/BrandingContext";
@@ -111,12 +112,15 @@ import SimuladorContemplacao from "./pages/ferramentas/SimuladorContemplacao";
 
 const queryClient = new QueryClient();
 
+const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <BrowserRouter>
-        <PreviewModeProvider>
-          <BrandingProvider>
+  <ClerkProvider publishableKey={CLERK_KEY} afterSignOutUrl="/auth">
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <PreviewModeProvider>
+            <BrandingProvider>
             <ThemeApplier />
             <PreviewBanner />
             <TooltipProvider>
@@ -233,6 +237,7 @@ const App = () => (
       </BrowserRouter>
     </AuthProvider>
   </QueryClientProvider>
+  </ClerkProvider>
 );
 
 export default App;

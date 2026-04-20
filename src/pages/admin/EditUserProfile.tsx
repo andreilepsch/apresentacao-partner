@@ -7,14 +7,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import api from '@/lib/api';
 import DynamicLogo from '@/components/DynamicLogo';
-import { useUserRole } from '@/hooks/useUserRole';
+import { useAuthContext } from '@/contexts/AuthContext';
+
+interface Company {
+  id: string;
+  company_name: string;
+}
 
 const EditUserProfile = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const { isAdmin, isLoading: roleLoading } = useUserRole();
+  const { isAdmin: isUserAdmin, loading: authLoading } = useAuthContext();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -22,84 +27,48 @@ const EditUserProfile = () => {
     fullName: '',
     email: '',
     role: 'partner' as 'admin' | 'partner',
-    companyName: '',
+    companyId: '',
+    isActive: true
   });
 
-  const [availableCompanies, setAvailableCompanies] = useState<string[]>([]);
+  const [availableCompanies, setAvailableCompanies] = useState<Company[]>([]);
 
   useEffect(() => {
-    if (!roleLoading && !isAdmin) {
+    if (!authLoading && !isUserAdmin) {
       navigate('/');
     }
-  }, [isAdmin, roleLoading, navigate]);
+  }, [isUserAdmin, authLoading, navigate]);
 
   useEffect(() => {
-    if (userId && isAdmin) {
-      fetchUserData();
+    if (userId && isUserAdmin) {
+      fetchData();
     }
-  }, [userId, isAdmin]);
+  }, [userId, isUserAdmin]);
 
-  const fetchUserData = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
       if (!userId) return;
 
-      // 1. Buscar Perfil (Nome, Email)
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name, email')
-        .eq('id', userId)
-        .single();
+      const [users, companies] = await Promise.all([
+        api.get('/admin/users'),
+        api.get('/companies')
+      ]);
 
-      if (profileError) {
-        console.error('Error fetching profile:', profileError);
-        // Não lançar erro aqui, tentar buscar outros dados
+      const user = users.find((u: any) => u.clerk_user_id === userId);
+      if (user) {
+        setUserData({
+          fullName: user.full_name || '',
+          email: user.email || '',
+          role: user.role || 'partner',
+          companyId: user.company_id || '',
+          isActive: user.is_active ?? true
+        });
       }
 
-      // 2. Buscar Role
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      // 3. Buscar Empresa Vinculada
-      const { data: userCompany } = await supabase
-        .from('user_companies')
-        .select('company_id')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      let companyName = '';
-      if (userCompany?.company_id) {
-        const { data: company } = await supabase
-          .from('companies')
-          .select('company_name')
-          .eq('id', userCompany.company_id)
-          .maybeSingle();
-        companyName = company?.company_name || '';
-      }
-
-      setUserData({
-        fullName: profile?.full_name || '',
-        email: profile?.email || '',
-        role: (roleData?.role as 'admin' | 'partner') || 'partner',
-        companyName,
-      });
-
-      // 4. Buscar lista de empresas para o dropdown
-      const { data: companies } = await supabase
-        .from('companies')
-        .select('id, company_name')
-        .order('company_name');
-
-      if (companies) {
-        // Remover duplicatas e valores vazios
-        const uniqueCompanies = Array.from(new Set(companies.map(c => c.company_name).filter(Boolean)));
-        setAvailableCompanies(uniqueCompanies);
-      }
+      setAvailableCompanies(companies);
     } catch (error: any) {
-      console.error('Error fetching user data:', error);
+      console.error('Error fetching data:', error);
       toast.error('Erro ao carregar dados do usuário');
     } finally {
       setLoading(false);
@@ -111,27 +80,24 @@ const EditUserProfile = () => {
     try {
       if (!userId) return;
 
-      const { error } = await supabase.rpc('admin_update_user_profile', {
-        _user_id: userId,
-        _full_name: userData.fullName,
-        _email: userData.email,
-        _role: userData.role,
-        _company_name: userData.companyName
+      await api.put(`/admin/users/${userId}`, {
+        full_name: userData.fullName,
+        role: userData.role,
+        company_id: userData.companyId || null,
+        is_active: userData.isActive
       });
-
-      if (error) throw error;
 
       toast.success('Usuário atualizado com sucesso!');
       navigate('/admin/users');
     } catch (error: any) {
       console.error('Error saving user:', error);
-      toast.error('Erro ao salvar: ' + (error.message || error.error_description || 'Erro desconhecido'));
+      toast.error('Erro ao salvar usuário');
     } finally {
       setSaving(false);
     }
   };
 
-  if (roleLoading || !isAdmin || loading) {
+  if (authLoading || (isUserAdmin && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -174,12 +140,14 @@ const EditUserProfile = () => {
             </div>
 
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email (Apenas Visualização)</Label>
               <Input
                 id="email"
                 type="email"
                 value={userData.email}
-                onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                disabled
+                className="bg-muted"
+                readOnly
               />
             </div>
 
@@ -205,36 +173,42 @@ const EditUserProfile = () => {
               <Label htmlFor="company">Empresa Vinculada</Label>
               <div className="space-y-2">
                 <Select
-                  value={userData.companyName || undefined}
+                  value={userData.companyId || "none"}
                   onValueChange={(value) =>
-                    setUserData({ ...userData, companyName: value })
+                    setUserData({ ...userData, companyId: value === "none" ? "" : value })
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Sem empresa vinculada" />
+                    <SelectValue placeholder="Selecione uma empresa" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {availableCompanies.map((company) => (
-                      <SelectItem key={company} value={company}>
-                        {company}
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.company_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {userData.companyName && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUserData({ ...userData, companyName: '' })}
-                  >
-                    Remover vinculação
-                  </Button>
-                )}
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Vincule este usuário a uma empresa existente. As configurações de branding da empresa serão aplicadas automaticamente.
-              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status da Conta</Label>
+              <Select
+                value={userData.isActive ? "active" : "inactive"}
+                onValueChange={(value) =>
+                  setUserData({ ...userData, isActive: value === "active" })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Ativo</SelectItem>
+                  <SelectItem value="inactive">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="pt-4">
